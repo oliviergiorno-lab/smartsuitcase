@@ -1,0 +1,99 @@
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-body p-5">
+          <div class="text-center mb-4">
+            <h2 class="fw-bold" style="color: var(--primary);">Create Your Trip</h2>
+            <p class="text-muted">Tell us where you're going and we'll pack for you</p>
+          </div>
+
+          <%= form_with model: @trip, url: trips_path, method: :post, class: "needs-validation" do |f| %>
+
+            <% if @trip.errors.any? %>
+              <div class="alert alert-danger">
+                <ul class="mb-0">
+                  <% @trip.errors.full_messages.each do |msg| %>
+                    <li><%= msg %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <div class="mb-4" data-controller="autocomplete">
+              <%= f.label :destination, class: "form-label fw-semibold" do %>
+                <i class="bi bi-geo-alt-fill text-primary"></i> Destination
+              <% end %>
+              <%= f.text_field :destination,
+                  class: "form-control form-control-lg",
+                  placeholder: "Start typing... (e.g., Paris, Tokyo)",
+                  required: true,
+                  data: {
+                    autocomplete_target: "input",
+                    action: "input->autocomplete#filter blur->autocomplete#hide"
+                  } %>
+              <div class="autocomplete-suggestions" data-autocomplete-target="suggestions"></div>
+            </div>
+
+            <div class="row mb-4" data-controller="date">
+              <div class="col-md-6">
+                <%= f.label :start_date, class: "form-label fw-semibold" do %>
+                  <i class="bi bi-calendar-event text-primary"></i> Start Date
+                <% end %>
+                <%= f.date_field :start_date,
+                    class: "form-control",
+                    required: true,
+                    min: Date.today,
+                    data: {
+                      date_target: "startDate",
+                      action: "change->date#updateEndDateMin"
+                    } %>
+              </div>
+
+              <div class="col-md-6">
+                <%= f.label :end_date, class: "form-label fw-semibold" do %>
+                  <i class="bi bi-calendar-check text-primary"></i> End Date
+                <% end %>
+                <%= f.date_field :end_date,
+                    class: "form-control",
+                    required: true,
+                    min: Date.today,
+                    data: {
+                      date_target: "endDate"
+                    } %>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <%= f.label :trip_type, class: "form-label fw-semibold" do %>
+                <i class="bi bi-compass text-primary"></i> Trip Type
+              <% end %>
+              <%= f.select :trip_type,
+                  [["🏙️ City Break", "city"],
+                   ["🏖️ Beach Vacation", "beach"],
+                   ["💼 Business Trip", "business"]],
+                  {},
+                  class: "form-select form-select-lg" %>
+            </div>
+
+            <div class="mb-4">
+              <%= f.label :luggage_type, class: "form-label fw-semibold" do %>
+                <i class="bi bi-luggage text-primary"></i> Luggage Type
+              <% end %>
+              <%= f.select :luggage_type,
+                  [["✈️ Cabin (50L)", "cabin"],
+                   ["🧳 Checked (100L)", "checked"]],
+                  {},
+                  class: "form-select form-select-lg" %>
+            </div>
+
+            <div class="d-grid">
+              <%= f.submit "Generate Packing List", class: "btn btn-primary btn-lg" %>
+            </div>
+
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

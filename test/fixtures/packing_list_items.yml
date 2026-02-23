@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  quantity: 1
+  volume_points: 1
+  matched: false
+  priority: MyString
+  trip: one
+
+two:
+  name: MyString
+  quantity: 1
+  volume_points: 1
+  matched: false
+  priority: MyString
+  trip: two

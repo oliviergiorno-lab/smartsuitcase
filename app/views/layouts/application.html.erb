@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "SmartSuitCase - Travel Worry-Free" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+
+    <style>
+      :root {
+        --primary: #1A5490;
+        --secondary: #E67E22;
+        --success: #27AE60;
+        --dark: #2C3E50;
+      }
+
+      body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      .navbar {
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+      }
+
+      .navbar-brand {
+        font-weight: 700;
+        font-size: 1.5rem;
+        color: var(--primary) !important;
+      }
+
+      .main-content {
+        padding: 2rem 0;
+      }
+
+      .card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      }
+
+      .btn-primary {
+        background: var(--primary);
+        border: none;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s;
+      }
+
+      .btn-primary:hover {
+        background: #14406b;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(26, 84, 144, 0.3);
+      }
+
+      .autocomplete-suggestions {
+        position: absolute;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        width: calc(100% - 2rem);
+        margin-top: 5px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: none;
+      }
+
+      .autocomplete-suggestions.show {
+        display: block;
+      }
+
+      .suggestion-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .suggestion-item:hover {
+        background: #f8f9fa;
+        color: var(--primary);
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+      <div class="container">
+        <%= link_to root_path, class: "navbar-brand" do %>
+          <i class="bi bi-suitcase-lg"></i> SmartSuitCase
+        <% end %>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <%= yield %>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

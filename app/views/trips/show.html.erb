@@ -1,0 +1,146 @@
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <!-- Header -->
+      <div class="text-center mb-4">
+        <h1 class="fw-bold text-white mb-2">
+          <i class="bi bi-luggage-fill"></i> Your Packing List
+        </h1>
+        <h3 class="text-white-50"><%= @trip.destination.titleize %></h3>
+      </div>
+
+      <!-- Trip Details Card -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title fw-bold mb-3">
+            <i class="bi bi-info-circle text-primary"></i> Trip Details
+          </h5>
+          <div class="row">
+            <div class="col-md-6 mb-2">
+              <strong><i class="bi bi-geo-alt"></i> Destination:</strong>
+              <%= @trip.destination.titleize %>
+            </div>
+            <div class="col-md-6 mb-2">
+              <strong><i class="bi bi-calendar-range"></i> Dates:</strong>
+              <%= @trip.start_date.strftime("%b %d") %> - <%= @trip.end_date.strftime("%b %d, %Y") %>
+            </div>
+            <div class="col-md-6 mb-2">
+              <strong><i class="bi bi-compass"></i> Type:</strong>
+              <%= @trip.trip_type.titleize %>
+            </div>
+            <div class="col-md-6 mb-2">
+              <strong><i class="bi bi-luggage"></i> Luggage:</strong>
+              <%= @trip.luggage_type.titleize %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weather Forecast Card -->
+      <% if @result[:forecast]&.any? %>
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="card-title fw-bold mb-3">
+              <i class="bi bi-cloud-sun text-primary"></i> Weather Forecast
+            </h5>
+            <div class="d-flex gap-2 overflow-auto pb-2">
+              <% @result[:forecast].each do |day| %>
+                <div class="text-center p-3 rounded" style="min-width: 80px; background: #f8f9fa;">
+                  <div class="small fw-semibold text-muted mb-1">
+                    <%= day[:date].strftime("%a") %>
+                  </div>
+                  <div class="fs-4 mb-1">
+                    <%= case day[:icon]
+                        when "Clear"        then "☀️"
+                        when "Clouds"       then "☁️"
+                        when "Rain"         then "🌧️"
+                        when "Drizzle"      then "🌦️"
+                        when "Thunderstorm" then "⛈️"
+                        when "Snow"         then "❄️"
+                        else "🌤️"
+                        end %>
+                  </div>
+                  <div class="fw-bold"><%= day[:temp].round %>°C</div>
+                  <% if day[:rain] %>
+                    <div class="small text-primary mt-1">☔</div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Packing List Card -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title fw-bold mb-3">
+            <i class="bi bi-list-check text-primary"></i> What to Pack
+          </h5>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th><i class="bi bi-tag"></i> Item</th>
+                  <th class="text-center"><i class="bi bi-123"></i> Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @result[:items].each do |item| %>
+                  <tr>
+                    <td class="fw-semibold"><%= item[:name].titleize %></td>
+                    <td class="text-center">
+                      <span class="badge bg-secondary"><%= item[:quantity] %></span>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Total Summary with Progress Bar -->
+          <div class="border-top pt-4 mt-3">
+            <% percentage = (@result[:total_points].to_f / @result[:capacity] * 100).round %>
+
+            <h5 class="mb-3">
+              <i class="bi bi-luggage-fill"></i> Luggage Capacity
+            </h5>
+
+            <div class="progress mb-3" style="height: 30px;">
+              <div class="progress-bar <%= percentage <= 100 ? 'bg-success' : 'bg-danger' %>"
+                   role="progressbar"
+                   style="width: <%= [percentage, 100].min %>%;"
+                   aria-valuenow="<%= percentage %>"
+                   aria-valuemin="0"
+                   aria-valuemax="100">
+                <strong><%= percentage %>%</strong>
+              </div>
+            </div>
+
+            <% if @result[:fits] %>
+              <div class="alert alert-success">
+                <i class="bi bi-check-circle-fill"></i>
+                <strong>Perfect!</strong> Everything fits comfortably in your <%= @trip.luggage_type %> luggage!
+              </div>
+            <% else %>
+              <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <strong>Oops!</strong> You're <%= percentage - 100 %>% over capacity. Consider removing some items or switching to checked luggage.
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="text-center">
+        <%= link_to new_trip_path, class: "btn btn-light btn-lg px-5" do %>
+          <i class="bi bi-plus-circle"></i> Create Another Trip
+        <% end %>
+      </div>
+
+    </div>
+  </div>
+</div>
