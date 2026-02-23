@@ -28,7 +28,7 @@ ENV RAILS_ENV="production" \
 # ------------------------------
 FROM base AS build
 
-# Install build dependencies + Node 20
+# Install build dependencies + Node 20 + Yarn
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y \
       build-essential \
@@ -40,6 +40,7 @@ RUN apt-get update -qq && \
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install --no-install-recommends -y nodejs && \
     corepack enable && \
+    corepack prepare yarn@stable --activate && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Install gems
@@ -56,8 +57,8 @@ COPY . .
 # Precompile bootsnap
 RUN bundle exec bootsnap precompile -j 1 app/ lib/
 
-# Precompile assets
-RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+# Precompile assets (with full trace for debugging)
+RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile --trace
 
 # ------------------------------
 # Final stage
