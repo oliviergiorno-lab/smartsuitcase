@@ -6,35 +6,25 @@ class PackingListGenerator
   def generate
     return error_result("Invalid trip dates") unless valid_dates?
 
-    items = []
     duration = [(@trip.end_date - @trip.start_date).to_i, 1].max
-
-    items << { name: "underwear", quantity: duration, points: 1 }
-    items << { name: "socks",     quantity: duration, points: 1 }
-    items << { name: "t_shirt",   quantity: duration, points: 2 }
-
     temp = temperature
+    travelers = @trip.travelers.any? ? @trip.travelers : [default_traveler]
 
-    if temp < 10
-      items << { name: "coat",    quantity: 1, points: 10 }
-      items << { name: "sweater", quantity: 2, points: 5 }
-      items << { name: "jeans",   quantity: 2, points: 4 }
-    elsif temp <= 22
-      items << { name: "jacket",  quantity: 1, points: 7 }
-      items << { name: "sweater", quantity: 1, points: 5 }
-      items << { name: "jeans",   quantity: 1, points: 4 }
-    else
-      items << { name: "short",   quantity: 3, points: 2 }
+    packing_per_traveler = travelers.map do |traveler|
+      items = base_items(duration, traveler)
+      items += weather_items(temp)
+      items << { name: "rain_jacket", quantity: 1, points: 7 } if precipitation >= 40
+
+      { traveler: traveler, items: items }
     end
 
-    items << { name: "rain_jacket", quantity: 1, points: 7 } if precipitation >= 40
-
-    total    = total_points(items)
+    all_items = packing_per_traveler.flat_map { |p| p[:items] }
+    total    = total_points(all_items)
     capacity = luggage_capacity
     fits     = total <= capacity
 
     {
-      items: items,
+      packing_per_traveler: packing_per_traveler,
       total_points: total,
       capacity: capacity,
       fits: fits,
@@ -53,13 +43,44 @@ class PackingListGenerator
 
   private
 
+  def base_items(duration, traveler)
+    extra = traveler.role == "child" ? 2 : 0
+    [
+      { name: "underwear", quantity: duration + extra, points: 1 },
+      { name: "socks",     quantity: duration,         points: 1 },
+      { name: "t_shirt",   quantity: duration + extra, points: 2 }
+    ]
+  end
+
+  def weather_items(temp)
+    if temp < 10
+      [
+        { name: "coat",    quantity: 1, points: 10 },
+        { name: "sweater", quantity: 2, points: 5 },
+        { name: "jeans",   quantity: 2, points: 4 }
+      ]
+    elsif temp <= 22
+      [
+        { name: "jacket",  quantity: 1, points: 7 },
+        { name: "sweater", quantity: 1, points: 5 },
+        { name: "jeans",   quantity: 1, points: 4 }
+      ]
+    else
+      [{ name: "short", quantity: 3, points: 2 }]
+    end
+  end
+
+  def default_traveler
+    OpenStruct.new(name: "Voyageur", role: "adult")
+  end
+
   def valid_dates?
     @trip.start_date.present? && @trip.end_date.present? &&
       @trip.end_date >= @trip.start_date
   end
 
   def error_result(message)
-    { items: [], total_points: 0, capacity: luggage_capacity, fits: false, error: message, forecast: [] }
+    { packing_per_traveler: [], total_points: 0, capacity: luggage_capacity, fits: false, error: message, forecast: [] }
   end
 
   def weather_data
@@ -83,7 +104,6 @@ class PackingListGenerator
     )
     return @forecast = [] unless response.success?
 
-    # Groupe par jour et prend la moyenne
     by_day = response.parsed_response["list"].group_by do |entry|
       Time.at(entry["dt"]).to_date
     end
@@ -92,13 +112,7 @@ class PackingListGenerator
       temps = entries.map { |e| e.dig("main", "temp") }.compact
       rain  = entries.any? { |e| ["Rain", "Drizzle", "Thunderstorm"].include?(e.dig("weather", 0, "main")) }
       icon  = entries.first.dig("weather", 0, "main")
-
-      {
-        date: date,
-        temp: temps.sum / temps.size,
-        rain: rain,
-        icon: icon
-      }
+      { date: date, temp: temps.sum / temps.size, rain: rain, icon: icon }
     end
   rescue StandardError
     @forecast = []

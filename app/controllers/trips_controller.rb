@@ -1,6 +1,7 @@
 class TripsController < ApplicationController
   def new
     @trip = Trip.new
+    @trip.travelers.build
   end
 
   def create
@@ -33,6 +34,9 @@ class TripsController < ApplicationController
   private
 
   def trip_params
-    params.require(:trip).permit(:destination, :start_date, :end_date, :trip_type, :luggage_type)
+    params.require(:trip).permit(
+      :destination, :start_date, :end_date, :trip_type, :luggage_type,
+      travelers_attributes: [:id, :name, :role, :_destroy]
+    )
   end
 end

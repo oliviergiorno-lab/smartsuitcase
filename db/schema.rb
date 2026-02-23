@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_21_075837) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_23_201222) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -26,6 +26,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_21_075837) do
     t.index ["trip_id"], name: "index_packing_list_items_on_trip_id"
   end
 
+  create_table "travelers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.string "role"
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id"], name: "index_travelers_on_trip_id"
+  end
+
   create_table "trips", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "destination"
@@ -34,7 +43,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_21_075837) do
     t.date "start_date"
     t.string "trip_type"
     t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
+    t.bigint "user_id"
     t.jsonb "weather_data"
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
@@ -55,6 +64,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_21_075837) do
   end
 
   add_foreign_key "packing_list_items", "trips"
+  add_foreign_key "travelers", "trips"
   add_foreign_key "trips", "users"
   add_foreign_key "wardrobe_items", "users"
 end

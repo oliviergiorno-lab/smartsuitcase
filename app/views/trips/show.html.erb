@@ -11,7 +11,6 @@
     margin: 0 auto;
   }
 
-  /* Header */
   .ssc-header {
     text-align: center;
     margin-bottom: 40px;
@@ -38,7 +37,6 @@
     text-transform: uppercase;
   }
 
-  /* Cards */
   .ssc-card {
     background: var(--color-card);
     border: 1px solid var(--color-border);
@@ -69,7 +67,6 @@
     gap: 8px;
   }
 
-  /* Trip details grid */
   .ssc-details-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -95,7 +92,6 @@
     font-weight: 500;
   }
 
-  /* Weather */
   .ssc-weather-row {
     display: flex;
     gap: 10px;
@@ -140,7 +136,38 @@
     margin-top: 4px;
   }
 
-  /* Packing table */
+  /* Traveler name header */
+  .ssc-traveler-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #F0EEE8;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ssc-traveler-badge {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+  }
+
+  .ssc-traveler-badge.adult {
+    background: rgba(201,168,76,0.15);
+    color: var(--color-primary);
+    border: 1px solid rgba(201,168,76,0.25);
+  }
+
+  .ssc-traveler-badge.child {
+    background: rgba(62,207,178,0.15);
+    color: var(--color-accent);
+    border: 1px solid rgba(62,207,178,0.25);
+  }
+
   .ssc-table {
     width: 100%;
     border-collapse: collapse;
@@ -192,7 +219,6 @@
     font-weight: 600;
   }
 
-  /* Capacity */
   .ssc-capacity-label {
     display: flex;
     justify-content: space-between;
@@ -257,7 +283,6 @@
   .ssc-alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
   .ssc-alert strong { display: block; margin-bottom: 2px; }
 
-  /* CTA */
   .ssc-cta {
     text-align: center;
     margin-top: 32px;
@@ -330,7 +355,6 @@
     </div>
 
     <!-- Weather Forecast -->
-   <!-- Weather Forecast -->
     <% if @result[:forecast]&.any? %>
       <div class="ssc-card">
         <div class="ssc-card-title">
@@ -367,35 +391,46 @@
       </div>
     <% end %>
 
-    <!-- Packing List -->
+    <!-- Packing List par voyageur -->
+    <% @result[:packing_per_traveler].each do |entry| %>
+      <div class="ssc-card">
+        <div class="ssc-traveler-title">
+          <%= entry[:traveler].role == "child" ? "👦" : "👤" %>
+          <%= entry[:traveler].name %>
+          <span class="ssc-traveler-badge <%= entry[:traveler].role %>">
+            <%= entry[:traveler].role == "child" ? "Enfant" : "Adulte" %>
+          </span>
+        </div>
+
+        <table class="ssc-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qté</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% entry[:items].each do |item| %>
+              <tr>
+                <td><%= item[:name].titleize %></td>
+                <td><span class="ssc-qty-badge"><%= item[:quantity] %></span></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <!-- Capacité totale -->
     <div class="ssc-card">
       <div class="ssc-card-title">
-        <i class="bi bi-list-check"></i> What to Pack
+        <i class="bi bi-luggage-fill"></i> Luggage Capacity
       </div>
-
-      <table class="ssc-table">
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Qty</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @result[:items].each do |item| %>
-            <tr>
-              <td><%= item[:name].titleize %></td>
-              <td><span class="ssc-qty-badge"><%= item[:quantity] %></span></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-
-      <div class="ssc-divider"></div>
 
       <% percentage = (@result[:total_points].to_f / @result[:capacity] * 100).round %>
 
       <div class="ssc-capacity-label">
-        <span class="ssc-capacity-title"><i class="bi bi-luggage-fill"></i> Luggage Capacity</span>
+        <span class="ssc-capacity-title">Total</span>
         <span class="ssc-capacity-pct <%= percentage > 100 ? 'over' : '' %>"><%= percentage %>%</span>
       </div>
 
