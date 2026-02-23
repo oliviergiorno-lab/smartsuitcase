@@ -1,146 +1,434 @@
-<div class="container">
-  <div class="row justify-content-center">
-    <div class="col-lg-8">
+<style>
+  .ssc-page {
+    min-height: 100vh;
+    background: var(--color-bg);
+    padding: 40px 16px;
+    font-family: var(--font-body);
+  }
 
-      <!-- Header -->
-      <div class="text-center mb-4">
-        <h1 class="fw-bold text-white mb-2">
-          <i class="bi bi-luggage-fill"></i> Your Packing List
-        </h1>
-        <h3 class="text-white-50"><%= @trip.destination.titleize %></h3>
+  .ssc-inner {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .ssc-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .ssc-title {
+    font-family: var(--font-display);
+    font-size: 42px;
+    letter-spacing: -0.02em;
+    color: #F0EEE8;
+    margin-bottom: 8px;
+    line-height: 1.1;
+  }
+
+  .ssc-title span {
+    font-style: italic;
+    color: var(--color-primary);
+  }
+
+  .ssc-subtitle {
+    font-size: 16px;
+    color: var(--color-text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Cards */
+  .ssc-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ssc-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  }
+
+  .ssc-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-primary);
+    margin-bottom: var(--space-6);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Trip details grid */
+  .ssc-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .ssc-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ssc-detail-label {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+
+  .ssc-detail-value {
+    font-size: 15px;
+    color: #F0EEE8;
+    font-weight: 500;
+  }
+
+  /* Weather */
+  .ssc-weather-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .ssc-weather-row::-webkit-scrollbar { height: 4px; }
+  .ssc-weather-row::-webkit-scrollbar-track { background: var(--color-border); border-radius: 2px; }
+  .ssc-weather-row::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 2px; }
+
+  .ssc-weather-day {
+    min-width: 76px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 14px 8px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .ssc-weather-dow {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .ssc-weather-icon { font-size: 24px; margin-bottom: 8px; }
+
+  .ssc-weather-temp {
+    font-size: 14px;
+    font-weight: 700;
+    color: #F0EEE8;
+  }
+
+  .ssc-weather-rain {
+    font-size: 12px;
+    color: var(--color-accent);
+    margin-top: 4px;
+  }
+
+  /* Packing table */
+  .ssc-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .ssc-table thead tr {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .ssc-table th {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    padding: 0 0 12px 0;
+  }
+
+  .ssc-table th:last-child { text-align: right; }
+
+  .ssc-table tbody tr {
+    border-bottom: 1px solid rgba(46,51,71,0.5);
+    transition: background var(--transition-fast);
+  }
+
+  .ssc-table tbody tr:last-child { border-bottom: none; }
+  .ssc-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  .ssc-table td {
+    padding: 12px 0;
+    color: #F0EEE8;
+    font-size: 14px;
+  }
+
+  .ssc-table td:last-child { text-align: right; }
+
+  .ssc-qty-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 8px;
+    background: var(--color-primary-dim);
+    color: var(--color-primary-light);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* Capacity */
+  .ssc-capacity-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .ssc-capacity-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #F0EEE8;
+  }
+
+  .ssc-capacity-pct {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+
+  .ssc-capacity-pct.over { color: var(--color-error); }
+
+  .ssc-progress-track {
+    height: 8px;
+    background: var(--color-border);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .ssc-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+    transition: width 0.6s ease;
+  }
+
+  .ssc-progress-fill.over {
+    background: linear-gradient(90deg, var(--color-error), #f08080);
+  }
+
+  .ssc-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+  }
+
+  .ssc-alert.success {
+    background: rgba(62,207,178,0.1);
+    border: 1px solid rgba(62,207,178,0.25);
+    color: var(--color-accent);
+  }
+
+  .ssc-alert.danger {
+    background: rgba(224,92,92,0.1);
+    border: 1px solid rgba(224,92,92,0.25);
+    color: #E05C5C;
+  }
+
+  .ssc-alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .ssc-alert strong { display: block; margin-bottom: 2px; }
+
+  /* CTA */
+  .ssc-cta {
+    text-align: center;
+    margin-top: 32px;
+  }
+
+  .ssc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 32px;
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .ssc-btn:hover {
+    background: var(--color-primary-light);
+    color: var(--color-text-inverse);
+    box-shadow: var(--shadow-gold);
+    transform: translateY(-1px);
+  }
+
+  .ssc-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 24px 0;
+  }
+</style>
+
+<div class="ssc-page">
+  <div class="ssc-inner">
+
+    <!-- Header -->
+    <div class="ssc-header">
+      <h1 class="ssc-title">Your <span>Packing List</span></h1>
+      <div class="ssc-subtitle"><%= @trip.destination.titleize %></div>
+    </div>
+
+    <!-- Trip Details -->
+    <div class="ssc-card">
+      <div class="ssc-card-title">
+        <i class="bi bi-info-circle"></i> Trip Details
       </div>
-
-      <!-- Trip Details Card -->
-      <div class="card mb-4">
-        <div class="card-body">
-          <h5 class="card-title fw-bold mb-3">
-            <i class="bi bi-info-circle text-primary"></i> Trip Details
-          </h5>
-          <div class="row">
-            <div class="col-md-6 mb-2">
-              <strong><i class="bi bi-geo-alt"></i> Destination:</strong>
-              <%= @trip.destination.titleize %>
-            </div>
-            <div class="col-md-6 mb-2">
-              <strong><i class="bi bi-calendar-range"></i> Dates:</strong>
-              <%= @trip.start_date.strftime("%b %d") %> - <%= @trip.end_date.strftime("%b %d, %Y") %>
-            </div>
-            <div class="col-md-6 mb-2">
-              <strong><i class="bi bi-compass"></i> Type:</strong>
-              <%= @trip.trip_type.titleize %>
-            </div>
-            <div class="col-md-6 mb-2">
-              <strong><i class="bi bi-luggage"></i> Luggage:</strong>
-              <%= @trip.luggage_type.titleize %>
-            </div>
-          </div>
+      <div class="ssc-details-grid">
+        <div class="ssc-detail-item">
+          <span class="ssc-detail-label"><i class="bi bi-geo-alt"></i> Destination</span>
+          <span class="ssc-detail-value"><%= @trip.destination.titleize %></span>
+        </div>
+        <div class="ssc-detail-item">
+          <span class="ssc-detail-label"><i class="bi bi-calendar-range"></i> Dates</span>
+          <span class="ssc-detail-value"><%= @trip.start_date.strftime("%b %d") %> — <%= @trip.end_date.strftime("%b %d, %Y") %></span>
+        </div>
+        <div class="ssc-detail-item">
+          <span class="ssc-detail-label"><i class="bi bi-compass"></i> Type</span>
+          <span class="ssc-detail-value"><%= @trip.trip_type.titleize %></span>
+        </div>
+        <div class="ssc-detail-item">
+          <span class="ssc-detail-label"><i class="bi bi-luggage"></i> Luggage</span>
+          <span class="ssc-detail-value"><%= @trip.luggage_type.titleize %></span>
         </div>
       </div>
+    </div>
 
-      <!-- Weather Forecast Card -->
-      <% if @result[:forecast]&.any? %>
-        <div class="card mb-4">
-          <div class="card-body">
-            <h5 class="card-title fw-bold mb-3">
-              <i class="bi bi-cloud-sun text-primary"></i> Weather Forecast
-            </h5>
-            <div class="d-flex gap-2 overflow-auto pb-2">
-              <% @result[:forecast].each do |day| %>
-                <div class="text-center p-3 rounded" style="min-width: 80px; background: #f8f9fa;">
-                  <div class="small fw-semibold text-muted mb-1">
-                    <%= day[:date].strftime("%a") %>
-                  </div>
-                  <div class="fs-4 mb-1">
-                    <%= case day[:icon]
-                        when "Clear"        then "☀️"
-                        when "Clouds"       then "☁️"
-                        when "Rain"         then "🌧️"
-                        when "Drizzle"      then "🌦️"
-                        when "Thunderstorm" then "⛈️"
-                        when "Snow"         then "❄️"
-                        else "🌤️"
-                        end %>
-                  </div>
-                  <div class="fw-bold"><%= day[:temp].round %>°C</div>
-                  <% if day[:rain] %>
-                    <div class="small text-primary mt-1">☔</div>
-                  <% end %>
-                </div>
+    <!-- Weather Forecast -->
+   <!-- Weather Forecast -->
+    <% if @result[:forecast]&.any? %>
+      <div class="ssc-card">
+        <div class="ssc-card-title">
+          <i class="bi bi-cloud-sun"></i> Weather Forecast
+        </div>
+        <div class="ssc-weather-row">
+          <% @result[:forecast].each do |day| %>
+            <div class="ssc-weather-day">
+              <div class="ssc-weather-dow"><%= day[:date].strftime("%a") %></div>
+              <div class="ssc-weather-icon">
+                <%= case day[:icon]
+                    when "Clear"        then "☀️"
+                    when "Clouds"       then "☁️"
+                    when "Rain"         then "🌧️"
+                    when "Drizzle"      then "🌦️"
+                    when "Thunderstorm" then "⛈️"
+                    when "Snow"         then "❄️"
+                    else "🌤️"
+                    end %>
+              </div>
+              <div class="ssc-weather-temp"><%= day[:temp].round %>°C</div>
+              <% if day[:rain] %>
+                <div class="ssc-weather-rain">☔</div>
               <% end %>
             </div>
+          <% end %>
+        </div>
+        <% trip_days = (@trip.end_date - @trip.start_date).to_i + 1 %>
+        <% if @result[:forecast].size < trip_days %>
+          <div style="margin-top:12px; font-size:12px; color:var(--color-text-muted);">
+            <i class="bi bi-info-circle"></i> Only showing 5-day forecast — accuracy beyond that drops significantly.
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <!-- Packing List -->
+    <div class="ssc-card">
+      <div class="ssc-card-title">
+        <i class="bi bi-list-check"></i> What to Pack
+      </div>
+
+      <table class="ssc-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Qty</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @result[:items].each do |item| %>
+            <tr>
+              <td><%= item[:name].titleize %></td>
+              <td><span class="ssc-qty-badge"><%= item[:quantity] %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+
+      <div class="ssc-divider"></div>
+
+      <% percentage = (@result[:total_points].to_f / @result[:capacity] * 100).round %>
+
+      <div class="ssc-capacity-label">
+        <span class="ssc-capacity-title"><i class="bi bi-luggage-fill"></i> Luggage Capacity</span>
+        <span class="ssc-capacity-pct <%= percentage > 100 ? 'over' : '' %>"><%= percentage %>%</span>
+      </div>
+
+      <div class="ssc-progress-track">
+        <div class="ssc-progress-fill <%= percentage > 100 ? 'over' : '' %>"
+             style="width: <%= [percentage, 100].min %>%;"></div>
+      </div>
+
+      <% if @result[:fits] %>
+        <div class="ssc-alert success">
+          <span class="ssc-alert-icon">✓</span>
+          <div>
+            <strong>Everything fits!</strong>
+            Your <%= @trip.luggage_type %> luggage is good to go.
+          </div>
+        </div>
+      <% else %>
+        <div class="ssc-alert danger">
+          <span class="ssc-alert-icon">⚠</span>
+          <div>
+            <strong><%= percentage - 100 %>% over capacity.</strong>
+            Consider removing some items or switching to checked luggage.
           </div>
         </div>
       <% end %>
-
-      <!-- Packing List Card -->
-      <div class="card mb-4">
-        <div class="card-body">
-          <h5 class="card-title fw-bold mb-3">
-            <i class="bi bi-list-check text-primary"></i> What to Pack
-          </h5>
-
-          <div class="table-responsive">
-            <table class="table table-hover align-middle">
-              <thead class="table-light">
-                <tr>
-                  <th><i class="bi bi-tag"></i> Item</th>
-                  <th class="text-center"><i class="bi bi-123"></i> Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% @result[:items].each do |item| %>
-                  <tr>
-                    <td class="fw-semibold"><%= item[:name].titleize %></td>
-                    <td class="text-center">
-                      <span class="badge bg-secondary"><%= item[:quantity] %></span>
-                    </td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Total Summary with Progress Bar -->
-          <div class="border-top pt-4 mt-3">
-            <% percentage = (@result[:total_points].to_f / @result[:capacity] * 100).round %>
-
-            <h5 class="mb-3">
-              <i class="bi bi-luggage-fill"></i> Luggage Capacity
-            </h5>
-
-            <div class="progress mb-3" style="height: 30px;">
-              <div class="progress-bar <%= percentage <= 100 ? 'bg-success' : 'bg-danger' %>"
-                   role="progressbar"
-                   style="width: <%= [percentage, 100].min %>%;"
-                   aria-valuenow="<%= percentage %>"
-                   aria-valuemin="0"
-                   aria-valuemax="100">
-                <strong><%= percentage %>%</strong>
-              </div>
-            </div>
-
-            <% if @result[:fits] %>
-              <div class="alert alert-success">
-                <i class="bi bi-check-circle-fill"></i>
-                <strong>Perfect!</strong> Everything fits comfortably in your <%= @trip.luggage_type %> luggage!
-              </div>
-            <% else %>
-              <div class="alert alert-danger">
-                <i class="bi bi-exclamation-triangle-fill"></i>
-                <strong>Oops!</strong> You're <%= percentage - 100 %>% over capacity. Consider removing some items or switching to checked luggage.
-              </div>
-            <% end %>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action Button -->
-      <div class="text-center">
-        <%= link_to new_trip_path, class: "btn btn-light btn-lg px-5" do %>
-          <i class="bi bi-plus-circle"></i> Create Another Trip
-        <% end %>
-      </div>
-
     </div>
+
+    <!-- CTA -->
+    <div class="ssc-cta">
+      <%= link_to new_trip_path, class: "ssc-btn" do %>
+        <i class="bi bi-plus-circle"></i> Create Another Trip
+      <% end %>
+    </div>
+
   </div>
 </div>

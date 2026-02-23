@@ -4,53 +4,62 @@ export default class extends Controller {
   static targets = ["input", "suggestions"]
 
   connect() {
-    this.cities = [
-      "Paris", "Tokyo", "New York", "London", "Barcelona", "Rome", "Amsterdam",
-      "Berlin", "Dubai", "Singapore", "Bangkok", "Istanbul", "Los Angeles",
-      "Madrid", "Prague", "Vienna", "Lisbon", "Athens", "Copenhagen", "Stockholm",
-      "Oslo", "Helsinki", "Brussels", "Dublin", "Edinburgh", "Sydney", "Melbourne",
-      "Toronto", "Vancouver", "Montreal", "San Francisco", "Miami", "Las Vegas",
-      "Chicago", "Boston", "Seattle", "Portland", "Denver", "Austin", "Nashville",
-      "Reykjavik", "Zurich", "Geneva", "Lyon", "Marseille", "Nice", "Florence",
-      "Venice", "Milan", "Naples", "Seville", "Valencia", "Porto", "Budapest"
-    ]
+    this.debounceTimer = null
   }
 
   filter() {
-    const query = this.inputTarget.value.toLowerCase()
+    const query = this.inputTarget.value.trim()
 
     if (query.length < 2) {
       this.suggestionsTarget.innerHTML = ""
-      this.suggestionsTarget.classList.remove("show")
       return
     }
 
-    const matches = this.cities.filter(city =>
-      city.toLowerCase().includes(query)
-    ).slice(0, 5)
-
-    if (matches.length === 0) {
-      this.suggestionsTarget.innerHTML = ""
-      this.suggestionsTarget.classList.remove("show")
-      return
-    }
-
-    this.suggestionsTarget.innerHTML = matches
-      .map(city => `<div class="suggestion-item" data-action="click->autocomplete#select">${city}</div>`)
-      .join("")
-
-    this.suggestionsTarget.classList.add("show")
+    // Debounce : attend 300ms après la dernière frappe avant d'appeler l'API
+    clearTimeout(this.debounceTimer)
+    this.debounceTimer = setTimeout(() => {
+      this.fetchCities(query)
+    }, 300)
   }
 
+  async fetchCities(query) {
+  try {
+    console.log("fetching:", query)
+    const response = await fetch(
+      `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&layer=city`
+    )
+    const data = await response.json()
+    console.log("data:", data)
+    console.log("features:", data.features)
+
+    const results = data.features.map(f => {
+      const city = f.properties.name
+      const country = f.properties.country
+      return { label: `${city}, ${country}`, value: city }
+    })
+
+    console.log("results:", results)
+    console.log("target:", this.suggestionsTarget)
+
+    this.suggestionsTarget.innerHTML = results
+      .map(r => `<div class="suggestion-item" data-action="click->autocomplete#select" data-value="${r.value}">${r.label}</div>`)
+      .join("")
+
+    console.log("innerHTML set:", this.suggestionsTarget.innerHTML)
+
+  } catch (error) {
+    console.error("Autocomplete error:", error)
+  }
+}
+
   select(event) {
-    this.inputTarget.value = event.target.textContent
+    this.inputTarget.value = event.target.dataset.value || event.target.textContent
     this.suggestionsTarget.innerHTML = ""
-    this.suggestionsTarget.classList.remove("show")
   }
 
   hide() {
     setTimeout(() => {
-      this.suggestionsTarget.classList.remove("show")
+      this.suggestionsTarget.innerHTML = ""
     }, 200)
   }
 }

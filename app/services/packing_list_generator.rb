@@ -99,7 +99,7 @@ class PackingListGenerator
         rain: rain,
         icon: icon
       }
-    end.first(7)
+    end
   rescue StandardError
     @forecast = []
   end
