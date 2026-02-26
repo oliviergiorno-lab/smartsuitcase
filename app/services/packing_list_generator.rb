@@ -88,10 +88,10 @@ class PackingListGenerator
 
   def sport_items
     [
-      { name: "sport_tshirt",  quantity: 1, points: 2 },
-      { name: "jogging",       quantity: 1, points: 3 },
-      { name: "sport_socks",   quantity: 1, points: 1 },
-      { name: "basket",        quantity: 1, points: 12 }
+      { name: "sport_tshirt", quantity: 1, points: 2 },
+      { name: "jogging",      quantity: 1, points: 3 },
+      { name: "sport_socks",  quantity: 1, points: 1 },
+      { name: "basket",       quantity: 1, points: 12 }
     ]
   end
 
@@ -122,25 +122,57 @@ class PackingListGenerator
 
   def forecast
     return @forecast if defined?(@forecast)
-    api_key = ENV["OPENWEATHER_API_KEY"]
+
+    geo = HTTParty.get(
+      "https://photon.komoot.io/api/",
+      query: { q: @trip.destination, limit: 1 }
+    )
+    return @forecast = [] unless geo.success?
+
+    feature = geo.parsed_response.dig("features", 0)
+    return @forecast = [] unless feature
+
+    lon, lat = feature.dig("geometry", "coordinates")
+
     response = HTTParty.get(
-      "https://api.openweathermap.org/data/2.5/forecast",
-      query: { q: @trip.destination, appid: api_key, units: "metric", cnt: 40 }
+      "https://api.open-meteo.com/v1/forecast",
+      query: {
+        latitude: lat,
+        longitude: lon,
+        daily: "temperature_2m_max,precipitation_sum,weathercode",
+        timezone: "auto",
+        forecast_days: 7
+      }
     )
     return @forecast = [] unless response.success?
 
-    by_day = response.parsed_response["list"].group_by do |entry|
-      Time.at(entry["dt"]).to_date
-    end
+    daily = response.parsed_response["daily"]
+    dates = daily["time"]
+    temps = daily["temperature_2m_max"]
+    precip = daily["precipitation_sum"]
+    codes = daily["weathercode"]
 
-    @forecast = by_day.map do |date, entries|
-      temps = entries.map { |e| e.dig("main", "temp") }.compact
-      rain  = entries.any? { |e| ["Rain", "Drizzle", "Thunderstorm"].include?(e.dig("weather", 0, "main")) }
-      icon  = entries.first.dig("weather", 0, "main")
-      { date: date, temp: temps.sum / temps.size, rain: rain, icon: icon }
+    @forecast = dates.each_with_index.map do |date, i|
+      {
+        date: Date.parse(date),
+        temp: temps[i].round,
+        rain: precip[i] > 2,
+        icon: weathercode_to_icon(codes[i])
+      }
     end
   rescue StandardError
     @forecast = []
+  end
+
+  def weathercode_to_icon(code)
+    case code
+    when 0 then "Clear"
+    when 1, 2, 3 then "Clouds"
+    when 51, 53, 55, 61, 63, 65, 80, 81, 82 then "Rain"
+    when 71, 73, 75, 77, 85, 86 then "Snow"
+    when 95, 96, 99 then "Thunderstorm"
+    else "Clouds"
+    end
   end
 
   def temperature

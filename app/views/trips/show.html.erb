@@ -93,11 +93,13 @@
   }
 
   .ssc-weather-row {
-    display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    padding-bottom: 8px;
-  }
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
 
   .ssc-weather-row::-webkit-scrollbar { height: 4px; }
   .ssc-weather-row::-webkit-scrollbar-track { background: var(--color-border); border-radius: 2px; }
@@ -136,7 +138,6 @@
     margin-top: 4px;
   }
 
-  /* Traveler name header */
   .ssc-traveler-title {
     font-size: 16px;
     font-weight: 600;
@@ -375,7 +376,7 @@
                     else "🌤️"
                     end %>
               </div>
-              <div class="ssc-weather-temp"><%= day[:temp].round %>°C</div>
+              <div class="ssc-weather-temp"><%= day[:temp] %>°C</div>
               <% if day[:rain] %>
                 <div class="ssc-weather-rain">☔</div>
               <% end %>
@@ -385,7 +386,7 @@
         <% trip_days = (@trip.end_date - @trip.start_date).to_i + 1 %>
         <% if @result[:forecast].size < trip_days %>
           <div style="margin-top:12px; font-size:12px; color:var(--color-text-muted);">
-            <i class="bi bi-info-circle"></i> Only showing 5-day forecast — accuracy beyond that drops significantly.
+            <i class="bi bi-info-circle"></i> Only showing 6-day forecast — accuracy beyond that drops significantly.
           </div>
         <% end %>
       </div>
