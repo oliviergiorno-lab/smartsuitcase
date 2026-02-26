@@ -163,7 +163,6 @@
     color: var(--color-primary);
   }
 
-  /* Travelers */
   .traveler-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -317,36 +316,34 @@
         <!-- Sport -->
         <div class="ssc-field">
           <span class="ssc-label">
-          <i class="bi bi-lightning"></i> Options
+            <i class="bi bi-lightning"></i> Options
           </span>
           <label style="display:flex; align-items:center; gap:10px; color:#F0EEE8; cursor:pointer;">
-          <%= f.check_box :sport, style: "width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;" %>
-    🏃 Sport / Activité physique
+            <%= f.check_box :sport, style: "width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;" %>
+            🏃 Sport / Activité physique
           </label>
         </div>
 
         <!-- Travelers -->
         <div class="ssc-field" data-controller="travelers">
-  <span class="ssc-label">
-    <i class="bi bi-people"></i> Voyageurs
-  </span>
-
-  <div id="travelers-list" data-travelers-target="list">
-    <%= f.fields_for :travelers do |t| %>
-      <div class="traveler-row">
-        <%= t.text_field :name, class: "ssc-input", placeholder: "Prénom" %>
-        <%= t.select :role,
-            [["👤 Adulte", "adult"], ["👦 Enfant", "child"]],
-            {},
-            class: "ssc-select" %>
-      </div>
-    <% end %>
-  </div>
-
-      <button type="button" class="ssc-add-traveler" data-action="click->travelers#add">
-          + Ajouter un voyageur
-      </button>
-      </div>
+          <span class="ssc-label">
+            <i class="bi bi-people"></i> Voyageurs
+          </span>
+          <div id="travelers-list" data-travelers-target="list">
+            <%= f.fields_for :travelers do |t| %>
+              <div class="traveler-row">
+                <%= t.text_field :name, class: "ssc-input", placeholder: "Prénom" %>
+                <%= t.select :role,
+                    [["👤 Adulte", "adult"], ["👦 Enfant", "child"]],
+                    {},
+                    class: "ssc-select" %>
+              </div>
+            <% end %>
+          </div>
+          <button type="button" class="ssc-add-traveler" data-action="click->travelers#add">
+            + Ajouter un voyageur
+          </button>
+        </div>
 
         <%= f.submit "✦ Generate My Packing List", class: "ssc-submit" %>
 

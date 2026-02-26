@@ -1,0 +1,70 @@
+<style>
+  .ssc-page { min-height: 100vh; background: var(--color-bg); padding: 80px 16px 60px 16px; font-family: var(--font-body); display: flex; align-items: center; }
+  .ssc-inner { max-width: 520px; margin: 0 auto; width: 100%; }
+  .ssc-header { text-align: center; margin-bottom: 40px; }
+  .ssc-logo { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 16px; }
+  .ssc-logo-icon { width: 48px; height: 48px; }
+  .ssc-logo-text { font-family: var(--font-display); font-size: 32px; letter-spacing: -0.02em; color: #F0EEE8; line-height: 1; }
+  .ssc-logo-text span { font-style: italic; color: var(--color-primary); }
+  .ssc-tagline { font-size: 13px; color: var(--color-text-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .ssc-card { background: var(--color-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 40px; position: relative; overflow: visible; }
+  .ssc-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--color-primary), var(--color-accent)); }
+  .ssc-field { margin-bottom: 24px; position: relative; }
+  .ssc-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 8px; }
+  .ssc-label i { color: var(--color-primary); margin-right: 4px; }
+  .ssc-input { width: 100%; background: var(--color-surface); border: 1.5px solid var(--color-border); border-radius: var(--radius-md); padding: 12px 16px; color: #F0EEE8; font-family: var(--font-body); font-size: 15px; outline: none; appearance: none; -webkit-appearance: none; }
+  .ssc-input::placeholder { color: var(--color-text-muted); }
+  .ssc-input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-dim); }
+  .ssc-submit { width: 100%; padding: 15px; background: var(--color-primary); color: var(--color-text-inverse); border: none; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+  .ssc-submit:hover { background: var(--color-primary-light); box-shadow: var(--shadow-gold); transform: translateY(-1px); }
+  .ssc-errors { background: rgba(224,92,92,0.1); border: 1px solid rgba(224,92,92,0.25); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 24px; color: #E05C5C; font-size: 13px; }
+  .ssc-errors ul { margin: 0; padding-left: 16px; }
+</style>
+
+<div class="ssc-page">
+  <div class="ssc-inner">
+    <div class="ssc-header">
+      <div class="ssc-logo">
+        <svg class="ssc-logo-icon" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="24" width="52" height="38" rx="6" fill="#22263A" stroke="#C9A84C" stroke-width="1.5"/>
+          <path d="M26 24V20C26 16.686 28.686 14 32 14H40C43.314 14 46 16.686 46 20V24" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="10" y1="43" x2="62" y2="43" stroke="#C9A84C" stroke-width="1"/>
+          <circle cx="36" cy="33" r="3.5" fill="#3ECFB2"/>
+          <rect x="8" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+          <rect x="60" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+        </svg>
+        <div class="ssc-logo-text">Smart<span>SuitCase</span></div>
+      </div>
+      <div class="ssc-tagline">Pack smart. Travel light.</div>
+    </div>
+
+    <div class="ssc-card">
+      <h2 style="font-family: var(--font-display); color: #F0EEE8; font-size: 22px; margin-bottom: 28px; text-align: center;">Create Account</h2>
+
+      <%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
+        <%= render "devise/shared/error_messages", resource: resource %>
+
+        <div class="ssc-field">
+          <label class="ssc-label"><i class="bi bi-envelope"></i> Email</label>
+          <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "ssc-input", placeholder: "your@email.com" %>
+        </div>
+        <div class="ssc-field">
+          <label class="ssc-label"><i class="bi bi-lock"></i> Password</label>
+          <% if @minimum_password_length %>
+            <span style="font-size: 11px; color: var(--color-text-muted);">(<%= @minimum_password_length %> characters minimum)</span>
+          <% end %>
+          <%= f.password_field :password, autocomplete: "new-password", class: "ssc-input", placeholder: "••••••••" %>
+        </div>
+        <div class="ssc-field">
+          <label class="ssc-label"><i class="bi bi-lock-fill"></i> Confirm Password</label>
+          <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "ssc-input", placeholder: "••••••••" %>
+        </div>
+        <%= f.submit "Create Account", class: "ssc-submit" %>
+      <% end %>
+
+      <div style="text-align: center; margin-top: 20px; font-size: 13px; color: var(--color-text-muted);">
+        <%= render "devise/shared/links" %>
+      </div>
+    </div>
+  </div>
+</div>

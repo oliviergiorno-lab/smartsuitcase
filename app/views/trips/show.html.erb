@@ -178,16 +178,21 @@
     border-bottom: 1px solid var(--color-border);
   }
 
-  .ssc-table th {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
-    padding: 0 0 12px 0;
-  }
+ .ssc-table th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding: 0 0 12px 0;
+  text-align: left;
+}
 
-  .ssc-table th:last-child { text-align: right; }
+    .ssc-table th:nth-child(2),
+    .ssc-table td:nth-child(2) { text-align: left; width: 60px; }
+
+    .ssc-table th:nth-child(3),
+    .ssc-table td:nth-child(3) { text-align: center; width: 40px; }
 
   .ssc-table tbody tr {
     border-bottom: 1px solid rgba(46,51,71,0.5);
@@ -404,21 +409,23 @@
         </div>
 
         <table class="ssc-table">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Qté</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% entry[:items].each do |item| %>
-              <tr>
-                <td><%= item[:name].titleize %></td>
-                <td><span class="ssc-qty-badge"><%= item[:quantity] %></span></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Qté</th>
+      <th>Check</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% entry[:items].each do |item| %>
+      <tr>
+        <td><%= item[:name].titleize %></td>
+        <td><span class="ssc-qty-badge"><%= item[:quantity] %></span></td>
+        <td><input type="checkbox" style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
       </div>
     <% end %>
 
@@ -458,13 +465,16 @@
         </div>
       <% end %>
     </div>
-
     <!-- CTA -->
-    <div class="ssc-cta">
-      <%= link_to new_trip_path, class: "ssc-btn" do %>
-        <i class="bi bi-plus-circle"></i> Create Another Trip
-      <% end %>
-    </div>
+  <!-- CTA -->
+<div class="ssc-cta" style="display:flex; gap:12px; justify-content:center;">
+  <%= link_to edit_trip_path(@trip), class: "ssc-btn" do %>
+    <i class="bi bi-pencil"></i> Edit Trip
+  <% end %>
+  <%= link_to new_trip_path, class: "ssc-btn", style: "background: var(--color-surface); color: #F0EEE8; border: 1px solid var(--color-border);" do %>
+    <i class="bi bi-plus-circle"></i> New Trip
+  <% end %>
+</div>
 
   </div>
 </div>

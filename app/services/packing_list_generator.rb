@@ -6,9 +6,9 @@ class PackingListGenerator
   def generate
     return error_result("Invalid trip dates") unless valid_dates?
 
-    duration = [(@trip.end_date - @trip.start_date).to_i, 1].max
+    duration = [ (@trip.end_date - @trip.start_date).to_i, 1 ].max
     temp = temperature
-    travelers = @trip.travelers.any? ? @trip.travelers : [default_traveler]
+    travelers = @trip.travelers.any? ? @trip.travelers : [ default_traveler ]
 
     packing_per_traveler = travelers.map do |traveler|
       items = base_items(duration, traveler)
@@ -69,12 +69,12 @@ class PackingListGenerator
         { name: "jeans",   quantity: 1, points: 4 }
       ]
     else
-      [{ name: "short", quantity: 3, points: 2 }]
+      [ { name: "short", quantity: 3, points: 2 } ]
     end
   end
 
   def shoes_items
-    items = [{ name: "casual_shoes", quantity: 1, points: 12 }]
+    items = [ { name: "casual_shoes", quantity: 1, points: 12 } ]
     items << { name: "smart_shoes", quantity: 1, points: 12 } if @trip.trip_type == "business"
     items
   end

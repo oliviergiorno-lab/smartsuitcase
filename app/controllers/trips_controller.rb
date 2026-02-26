@@ -1,4 +1,6 @@
 class TripsController < ApplicationController
+  before_action :authenticate_user!
+
   def new
     @trip = Trip.new
     @trip.travelers.build
@@ -6,7 +8,7 @@ class TripsController < ApplicationController
 
   def create
     @trip = Trip.new(trip_params)
-    @trip.user = User.first  # TODO: remplacer par current_user avec Devise
+    @trip.user = current_user
 
     if @trip.save
       redirect_to trip_path(@trip)
@@ -31,12 +33,40 @@ class TripsController < ApplicationController
     end
   end
 
+  def my_trips
+    @trips = current_user.trips.order(created_at: :desc)
+  end
+
+  def edit
+    @trip = current_user.trips.find_by(id: params[:id])
+    redirect_to my_trips_path if @trip.nil?
+  end
+
+  def update
+    @trip = current_user.trips.find_by(id: params[:id])
+    if @trip.update(trip_params)
+      redirect_to trip_path(@trip), notice: "Trip updated."
+    else
+      render :edit, status: :unprocessable_entity
+    end
+  end
+
+  def destroy
+    @trip = current_user.trips.find_by(id: params[:id])
+    if @trip
+      @trip.destroy
+      redirect_to my_trips_path, notice: "Trip deleted."
+    else
+      redirect_to my_trips_path, alert: "Trip not found."
+    end
+  end
+
   private
 
   def trip_params
     params.require(:trip).permit(
       :destination, :start_date, :end_date, :trip_type, :luggage_type, :sport,
-      travelers_attributes: [:id, :name, :role, :_destroy]
+      travelers_attributes: [ :id, :name, :role, :_destroy ]
     )
   end
 end
