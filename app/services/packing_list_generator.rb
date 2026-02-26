@@ -13,6 +13,9 @@ class PackingListGenerator
     packing_per_traveler = travelers.map do |traveler|
       items = base_items(duration, traveler)
       items += weather_items(temp)
+      items += shoes_items
+      items += beach_items(duration) if @trip.trip_type == "beach"
+      items += sport_items if @trip.sport
       items << { name: "rain_jacket", quantity: 1, points: 7 } if precipitation >= 40
 
       { traveler: traveler, items: items }
@@ -68,6 +71,28 @@ class PackingListGenerator
     else
       [{ name: "short", quantity: 3, points: 2 }]
     end
+  end
+
+  def shoes_items
+    items = [{ name: "casual_shoes", quantity: 1, points: 12 }]
+    items << { name: "smart_shoes", quantity: 1, points: 12 } if @trip.trip_type == "business"
+    items
+  end
+
+  def beach_items(duration)
+    [
+      { name: "swimsuit", quantity: (duration / 3.0).ceil, points: 2 },
+      { name: "tongue",   quantity: 1, points: 3 }
+    ]
+  end
+
+  def sport_items
+    [
+      { name: "sport_tshirt",  quantity: 1, points: 2 },
+      { name: "jogging",       quantity: 1, points: 3 },
+      { name: "sport_socks",   quantity: 1, points: 1 },
+      { name: "basket",        quantity: 1, points: 12 }
+    ]
   end
 
   def default_traveler
