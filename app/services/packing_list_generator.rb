@@ -7,7 +7,10 @@ class PackingListGenerator
     return error_result("Invalid trip dates") unless valid_dates?
 
     duration = [ (@trip.end_date - @trip.start_date).to_i, 1 ].max
-    temp = temperature
+
+    # Forecast must be called first so temperature_for_rules and has_rain can use its data
+    forecast
+    temp = temperature_for_rules
     travelers = @trip.travelers.any? ? @trip.travelers : [ default_traveler ]
 
     packing_per_traveler = travelers.map do |traveler|
@@ -16,8 +19,9 @@ class PackingListGenerator
       items += shoes_items
       items += beach_items(duration) if @trip.trip_type == "beach"
       items += sport_items if @trip.sport
-      items << { name: "rain_jacket", quantity: 1, points: 7 } if precipitation >= 40
-
+      items << { name: "rain_jacket", quantity: 1, points: 7 } if has_rain?
+      toiletry_points = traveler.role == "child" ? 3 : 7
+      items << { name: "toiletry_bag", quantity: 1, points: toiletry_points }
       { traveler: traveler, items: items }
     end
 
@@ -46,14 +50,15 @@ class PackingListGenerator
 
   private
 
-  def base_items(duration, traveler)
-    extra = traveler.role == "child" ? 2 : 0
-    [
-      { name: "underwear", quantity: duration + extra, points: 1 },
-      { name: "socks",     quantity: duration,         points: 1 },
-      { name: "t_shirt",   quantity: duration + extra, points: 2 }
-    ]
-  end
+ def base_items(duration, traveler)
+  extra = traveler.role == "child" ? 2 : 0
+  toiletry_points = traveler.role == "child" ? 3 : 7
+  [
+    { name: "underwear",    quantity: duration + extra, points: 1 },
+    { name: "socks",        quantity: duration,         points: 1 },
+    { name: "t_shirt",      quantity: duration + extra, points: 2 },
+  ]
+ end
 
   def weather_items(temp)
     if temp < 10
@@ -108,18 +113,6 @@ class PackingListGenerator
     { packing_per_traveler: [], total_points: 0, capacity: luggage_capacity, fits: false, error: message, forecast: [] }
   end
 
-  def weather_data
-    return @weather_data if defined?(@weather_data)
-    api_key = ENV["OPENWEATHER_API_KEY"]
-    response = HTTParty.get(
-      "https://api.openweathermap.org/data/2.5/weather",
-      query: { q: @trip.destination, appid: api_key, units: "metric" }
-    )
-    @weather_data = response.success? ? response.parsed_response : nil
-  rescue StandardError
-    @weather_data = nil
-  end
-
   def forecast
     return @forecast if defined?(@forecast)
 
@@ -164,6 +157,32 @@ class PackingListGenerator
     @forecast = []
   end
 
+  def temperature_for_rules
+    return 15 if forecast.empty?
+
+    # Jours du voyage présents dans le forecast
+    trip_days = forecast.select do |day|
+      day[:date] >= @trip.start_date && day[:date] <= @trip.end_date
+    end
+
+    # Si des jours du voyage sont dans la fenêtre → moyenne de ces jours
+    # Sinon → moyenne des 7 jours disponibles
+    days_to_use = trip_days.any? ? trip_days : forecast
+    temps = days_to_use.map { |d| d[:temp] }
+    (temps.sum.to_f / temps.size).round
+  end
+
+  def has_rain?
+    return false if forecast.empty?
+
+    # Pluie sur les jours du voyage si disponibles, sinon sur les 7 jours
+    trip_days = forecast.select do |day|
+      day[:date] >= @trip.start_date && day[:date] <= @trip.end_date
+    end
+    days_to_check = trip_days.any? ? trip_days : forecast
+    days_to_check.any? { |day| day[:rain] }
+  end
+
   def weathercode_to_icon(code)
     case code
     when 0 then "Clear"
@@ -173,15 +192,5 @@ class PackingListGenerator
     when 95, 96, 99 then "Thunderstorm"
     else "Clouds"
     end
-  end
-
-  def temperature
-    weather_data&.dig("main", "temp") || 15
-  end
-
-  def precipitation
-    return 80 if weather_data&.dig("weather", 0, "main") == "Rain"
-    return 60 if weather_data&.dig("weather", 0, "main") == "Drizzle"
-    weather_data&.dig("rain", "1h") ? 80 : 10
   end
 end

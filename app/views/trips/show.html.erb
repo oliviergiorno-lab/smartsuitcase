@@ -93,13 +93,13 @@
   }
 
   .ssc-weather-row {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 
   .ssc-weather-row::-webkit-scrollbar { height: 4px; }
   .ssc-weather-row::-webkit-scrollbar-track { background: var(--color-border); border-radius: 2px; }
@@ -178,21 +178,21 @@
     border-bottom: 1px solid var(--color-border);
   }
 
- .ssc-table th {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  padding: 0 0 12px 0;
-  text-align: left;
-}
+  .ssc-table th {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    padding: 0 0 12px 0;
+    text-align: left;
+  }
 
-    .ssc-table th:nth-child(2),
-    .ssc-table td:nth-child(2) { text-align: left; width: 60px; }
+  .ssc-table th:nth-child(2),
+  .ssc-table td:nth-child(2) { text-align: left; width: 60px; }
 
-    .ssc-table th:nth-child(3),
-    .ssc-table td:nth-child(3) { text-align: center; width: 40px; }
+  .ssc-table th:nth-child(3),
+  .ssc-table td:nth-child(3) { text-align: center; width: 40px; }
 
   .ssc-table tbody tr {
     border-bottom: 1px solid rgba(46,51,71,0.5);
@@ -388,12 +388,9 @@
             </div>
           <% end %>
         </div>
-        <% trip_days = (@trip.end_date - @trip.start_date).to_i + 1 %>
-        <% if @result[:forecast].size < trip_days %>
-          <div style="margin-top:12px; font-size:12px; color:var(--color-text-muted);">
-            <i class="bi bi-info-circle"></i> Only showing 6-day forecast — accuracy beyond that drops significantly.
-          </div>
-        <% end %>
+        <p style="margin-top:12px; font-size:12px; color:var(--color-text-muted); text-align:center; font-style:italic;">
+          La météo affichée est celle des 7 prochains jours — pensez à mettre à jour votre trip à J-2 pour une liste encore plus précise.
+        </p>
       </div>
     <% end %>
 
@@ -407,74 +404,117 @@
             <%= entry[:traveler].role == "child" ? "Enfant" : "Adulte" %>
           </span>
         </div>
-
         <table class="ssc-table">
-  <thead>
-    <tr>
-      <th>Item</th>
-      <th>Qté</th>
-      <th>Check</th>
-    </tr>
-  </thead>
-  <tbody>
-    <% entry[:items].each do |item| %>
-      <tr>
-        <td><%= item[:name].titleize %></td>
-        <td><span class="ssc-qty-badge"><%= item[:quantity] %></span></td>
-        <td><input type="checkbox" style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"></td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qté</th>
+              <th>Check</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% entry[:items].each do |item| %>
+              <tr>
+                <td><%= item[:name].titleize %></td>
+                <td><span class="ssc-qty-badge"><%= item[:quantity] %></span></td>
+                <td><input type="checkbox" style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
       </div>
     <% end %>
 
-    <!-- Capacité totale -->
-    <div class="ssc-card">
-      <div class="ssc-card-title">
-        <i class="bi bi-luggage-fill"></i> Luggage Capacity
-      </div>
+    <!-- Accessoires + Capacité dans le même controller -->
+    <div data-controller="accessories"
+         data-accessories-total-value="<%= @result[:total_points] %>"
+         data-accessories-capacity-value="<%= @result[:capacity] %>">
 
-      <% percentage = (@result[:total_points].to_f / @result[:capacity] * 100).round %>
-
-      <div class="ssc-capacity-label">
-        <span class="ssc-capacity-title">Total</span>
-        <span class="ssc-capacity-pct <%= percentage > 100 ? 'over' : '' %>"><%= percentage %>%</span>
-      </div>
-
-      <div class="ssc-progress-track">
-        <div class="ssc-progress-fill <%= percentage > 100 ? 'over' : '' %>"
-             style="width: <%= [percentage, 100].min %>%;"></div>
-      </div>
-
-      <% if @result[:fits] %>
-        <div class="ssc-alert success">
-          <span class="ssc-alert-icon">✓</span>
-          <div>
-            <strong>Everything fits!</strong>
-            Your <%= @trip.luggage_type %> luggage is good to go.
-          </div>
+      <!-- Accessoires optionnels -->
+      <div class="ssc-card">
+        <div class="ssc-card-title">
+          <i class="bi bi-bag-plus"></i> Accessoires optionnels
         </div>
-      <% else %>
-        <div class="ssc-alert danger">
-          <span class="ssc-alert-icon">⚠</span>
-          <div>
-            <strong><%= percentage - 100 %>% over capacity.</strong>
-            Consider removing some items or switching to checked luggage.
-          </div>
+        <table class="ssc-table">
+          <tbody>
+            <tr>
+              <td>Sèche-cheveux</td><td></td>
+              <td><input type="checkbox" data-accessories-target="item" data-points="12"
+                   style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"
+                   data-action="change->accessories#update"></td>
+            </tr>
+            <tr>
+              <td>Fer à lisser</td><td></td>
+              <td><input type="checkbox" data-accessories-target="item" data-points="6"
+                   style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"
+                   data-action="change->accessories#update"></td>
+            </tr>
+            <tr>
+              <td>PC portable</td><td></td>
+              <td><input type="checkbox" data-accessories-target="item" data-points="6"
+                   style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"
+                   data-action="change->accessories#update"></td>
+            </tr>
+            <tr>
+              <td>Tablette</td><td></td>
+              <td><input type="checkbox" data-accessories-target="item" data-points="6"
+                   style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"
+                   data-action="change->accessories#update"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Capacité totale -->
+      <div class="ssc-card">
+        <div class="ssc-card-title">
+          <i class="bi bi-luggage-fill"></i> Luggage Capacity
         </div>
+
+        <% percentage = (@result[:total_points].to_f / @result[:capacity] * 100).round %>
+
+        <div class="ssc-capacity-label">
+          <span class="ssc-capacity-title">Total</span>
+          <span class="ssc-capacity-pct <%= percentage > 100 ? 'over' : '' %>"
+                data-accessories-target="pct"><%= percentage %>%</span>
+        </div>
+
+        <div class="ssc-progress-track">
+          <div class="ssc-progress-fill <%= percentage > 100 ? 'over' : '' %>"
+               data-accessories-target="bar"
+               style="width: <%= [percentage, 100].min %>%;"></div>
+        </div>
+
+        <% if @result[:fits] %>
+          <div class="ssc-alert success">
+            <span class="ssc-alert-icon">✓</span>
+            <div>
+              <strong>Everything fits!</strong>
+              Your <%= @trip.luggage_type %> luggage is good to go.
+            </div>
+          </div>
+        <% else %>
+          <div class="ssc-alert danger">
+            <span class="ssc-alert-icon">⚠</span>
+            <div>
+              <strong><%= percentage - 100 %>% over capacity.</strong>
+              Consider removing some items or switching to checked luggage.
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+    </div>
+
+    <!-- CTA -->
+    <div class="ssc-cta" style="display:flex; gap:12px; justify-content:center;">
+      <%= link_to edit_trip_path(@trip), class: "ssc-btn" do %>
+        <i class="bi bi-pencil"></i> Edit Trip
+      <% end %>
+      <%= link_to new_trip_path, class: "ssc-btn", style: "background: var(--color-surface); color: #F0EEE8; border: 1px solid var(--color-border);" do %>
+        <i class="bi bi-plus-circle"></i> New Trip
       <% end %>
     </div>
-    <!-- CTA -->
-  <!-- CTA -->
-<div class="ssc-cta" style="display:flex; gap:12px; justify-content:center;">
-  <%= link_to edit_trip_path(@trip), class: "ssc-btn" do %>
-    <i class="bi bi-pencil"></i> Edit Trip
-  <% end %>
-  <%= link_to new_trip_path, class: "ssc-btn", style: "background: var(--color-surface); color: #F0EEE8; border: 1px solid var(--color-border);" do %>
-    <i class="bi bi-plus-circle"></i> New Trip
-  <% end %>
-</div>
 
   </div>
 </div>
