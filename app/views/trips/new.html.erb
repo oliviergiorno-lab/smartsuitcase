@@ -235,7 +235,7 @@
 
     <div class="ssc-card">
 
-      <%= form_with model: @trip, url: trips_path, method: :post do |f| %>
+      <%= form_with model: @trip, url: trips_path, method: :post, data: { controller: "trip-warning" } do |f| %>
 
         <% if @trip.errors.any? %>
           <div class="ssc-errors">
@@ -345,8 +345,7 @@
           </button>
         </div>
 
-        <%= f.submit "✦ Generate My Packing List", class: "ssc-submit" %>
-
+        <%= f.submit "✦ Generate My Packing List", class: "ssc-submit", data: { action: "click->trip-warning#check" } %>
       <% end %>
     </div>
 
