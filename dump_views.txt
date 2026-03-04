@@ -1,0 +1,1902 @@
+=== smartsuitcase/app/javascript/application.js ===
+// Configure your import map in config/importmap.rb. Read more: https://github.com/rails/importmap-rails
+import "@hotwired/turbo-rails"
+import "controllers"
+=== smartsuitcase/app/javascript/controllers/date_controller.js ===
+import { Controller } from "@hotwired/stimulus"
+
+export default class extends Controller {
+  static targets = ["startDate", "endDate"]
+
+  connect() {
+    this.updateEndDateMin()
+  }
+
+  updateEndDateMin() {
+    const startDate = this.startDateTarget.value
+
+    if (startDate) {
+      this.endDateTarget.min = startDate
+
+      // Si end_date est avant start_date, on la remet à start_date
+      if (this.endDateTarget.value && this.endDateTarget.value < startDate) {
+        this.endDateTarget.value = startDate
+      }
+    }
+  }
+}
+=== smartsuitcase/app/javascript/controllers/trip_warning_controller.js ===
+import { Controller } from "@hotwired/stimulus"
+
+export default class extends Controller {
+  static targets = ["startDate"]
+
+  check(event) {
+    event.preventDefault()
+
+    const startDateInput = this.element.querySelector("[data-date-target='startDate']")
+    if (!startDateInput || !startDateInput.value) {
+      this.element.submit()
+      return
+    }
+
+    const startDate = new Date(startDateInput.value)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const diffDays = Math.ceil((startDate - today) / (1000 * 60 * 60 * 24))
+
+    if (diffDays > 4) {
+      this.showModal()
+    } else {
+      this.element.submit()
+    }
+  }
+
+  showModal() {
+    const modal = document.createElement("div")
+    modal.innerHTML = `
+      <div id="ssc-modal-overlay" style="
+        position: fixed; inset: 0;
+        background: rgba(13,15,20,0.85);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000; padding: 24px;
+      ">
+        <div style="
+          background: #22263A;
+          border: 1px solid #C9A84C;
+          border-radius: 12px;
+          padding: 32px;
+          max-width: 400px;
+          width: 100%;
+          position: relative;
+          text-align: center;
+        ">
+          <div style="
+            position: absolute; top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #C9A84C, #3ECFB2);
+            border-radius: 12px 12px 0 0;
+          "></div>
+          <div style="font-size: 28px; margin-bottom: 16px;">🌤️</div>
+          <h3 style="
+            font-family: var(--font-display);
+            color: #C9A84C;
+            font-size: 18px;
+            margin-bottom: 12px;
+          ">Météo indicative</h3>
+          <p style="
+            color: #F0EEE8;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+          ">
+            Votre voyage est dans plus de 4 jours. La liste générée est basée sur la météo actuelle. Pensez à mettre à jour votre trip à J-2 pour une liste encore plus précise.
+          </p>
+          <button id="ssc-modal-confirm" style="
+            width: 100%;
+            padding: 14px;
+            background: #C9A84C;
+            color: #0D0F14;
+            border: none;
+            border-radius: 8px;
+            font-family: var(--font-body);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+          ">Compris, générer ma liste</button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+
+    document.getElementById("ssc-modal-confirm").addEventListener("click", () => {
+      document.getElementById("ssc-modal-overlay").remove()
+      this.element.submit()
+    })
+  }
+}
+=== smartsuitcase/app/javascript/controllers/travelers_controller.js ===
+import { Controller } from "@hotwired/stimulus"
+
+export default class extends Controller {
+  static targets = ["list"]
+
+  add() {
+    const index = this.listTarget.children.length
+    const html = `
+      <div class="traveler-row" style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; margin-bottom:12px; align-items:center;">
+        <input type="text" name="trip[travelers_attributes][${index}][name]" placeholder="Prénom" class="ssc-input">
+        <select name="trip[travelers_attributes][${index}][role]" class="ssc-select">
+          <option value="adult">👤 Adulte</option>
+          <option value="child">👦 Enfant</option>
+        </select>
+        <button type="button" onclick="this.closest('.traveler-row').remove()" style="background:none; border:none; cursor:pointer; color:#E05C5C; font-size:18px; padding:0;">✕</button>
+      </div>
+    `
+    this.listTarget.insertAdjacentHTML("beforeend", html)
+  }
+}
+=== smartsuitcase/app/javascript/controllers/autocomplete_controller.js ===
+import { Controller } from "@hotwired/stimulus"
+
+export default class extends Controller {
+  static targets = ["input", "suggestions"]
+
+  connect() {
+    this.debounceTimer = null
+  }
+
+  filter() {
+    const query = this.inputTarget.value.trim()
+
+    if (query.length < 2) {
+      this.suggestionsTarget.innerHTML = ""
+      return
+    }
+
+    // Debounce : attend 300ms après la dernière frappe avant d'appeler l'API
+    clearTimeout(this.debounceTimer)
+    this.debounceTimer = setTimeout(() => {
+      this.fetchCities(query)
+    }, 300)
+  }
+
+  async fetchCities(query) {
+  try {
+    console.log("fetching:", query)
+    const response = await fetch(
+      `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&layer=city`
+    )
+    const data = await response.json()
+    console.log("data:", data)
+    console.log("features:", data.features)
+
+    const results = data.features.map(f => {
+      const city = f.properties.name
+      const country = f.properties.country
+      return { label: `${city}, ${country}`, value: city }
+    })
+
+    console.log("results:", results)
+    console.log("target:", this.suggestionsTarget)
+
+    this.suggestionsTarget.innerHTML = results
+      .map(r => `<div class="suggestion-item" data-action="click->autocomplete#select" data-value="${r.value}">${r.label}</div>`)
+      .join("")
+
+    console.log("innerHTML set:", this.suggestionsTarget.innerHTML)
+
+  } catch (error) {
+    console.error("Autocomplete error:", error)
+  }
+}
+
+  select(event) {
+    this.inputTarget.value = event.target.dataset.value || event.target.textContent
+    this.suggestionsTarget.innerHTML = ""
+  }
+
+  hide() {
+    setTimeout(() => {
+      this.suggestionsTarget.innerHTML = ""
+    }, 200)
+  }
+}
+=== smartsuitcase/app/javascript/controllers/hello_controller.js ===
+import { Controller } from "@hotwired/stimulus"
+
+export default class extends Controller {
+  connect() {
+    this.element.textContent = "Hello World!"
+  }
+}
+=== smartsuitcase/app/javascript/controllers/index.js ===
+import { application } from "controllers/application"
+import { eagerLoadControllersFrom } from "@hotwired/stimulus-loading"
+eagerLoadControllersFrom("controllers", application)
+=== smartsuitcase/app/javascript/controllers/accessories_controller.js ===
+import { Controller } from "@hotwired/stimulus"
+
+export default class extends Controller {
+  static targets = ["item", "pct", "bar"]
+  static values = { total: Number, capacity: Number }
+
+  update() {
+    const extra = this.itemTargets
+      .filter(cb => cb.checked)
+      .reduce((sum, cb) => sum + parseInt(cb.dataset.points), 0)
+
+    const newTotal = this.totalValue + extra
+    const pct = Math.round(newTotal / this.capacityValue * 100)
+    const over = pct > 100
+
+    this.pctTarget.textContent = pct + "%"
+    this.pctTarget.className = "ssc-capacity-pct" + (over ? " over" : "")
+    this.barTarget.style.width = Math.min(pct, 100) + "%"
+    this.barTarget.className = "ssc-progress-fill" + (over ? " over" : "")
+  }
+}
+=== smartsuitcase/app/javascript/controllers/application.js ===
+import { Application } from "@hotwired/stimulus"
+
+const application = Application.start()
+
+// Configure Stimulus development experience
+application.debug = false
+window.Stimulus   = application
+
+export { application }
+=== smartsuitcase/app/views/devise/unlocks/new.html.erb ===
+<h2>Resend unlock instructions</h2>
+
+<%= form_for(resource, as: resource_name, url: unlock_path(resource_name), html: { method: :post }) do |f| %>
+  <%= render "devise/shared/error_messages", resource: resource %>
+
+  <div class="field">
+    <p><%= f.label :email %></p>
+    <p><%= f.email_field :email, autofocus: true, autocomplete: "email" %></p>
+  </div>
+
+  <div class="actions">
+    <%= f.submit "Resend unlock instructions" %>
+  </div>
+<% end %>
+
+<%= render "devise/shared/links" %>
+=== smartsuitcase/app/views/devise/passwords/edit.html.erb ===
+<h2>Change your password</h2>
+
+<%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :put }) do |f| %>
+  <%= render "devise/shared/error_messages", resource: resource %>
+  <%= f.hidden_field :reset_password_token %>
+
+  <div class="field">
+    <p><%= f.label :password, "New password" %></p>
+    <% if @minimum_password_length %>
+      <p><em>(<%= @minimum_password_length %> characters minimum)</em></p>
+    <% end %>
+    <p><%= f.password_field :password, autofocus: true, autocomplete: "new-password" %></p>
+  </div>
+
+  <div class="field">
+    <p><%= f.label :password_confirmation, "Confirm new password" %></p>
+    <p><%= f.password_field :password_confirmation, autocomplete: "new-password" %></p>
+  </div>
+
+  <div class="actions">
+    <%= f.submit "Change my password" %>
+  </div>
+<% end %>
+
+<%= render "devise/shared/links" %>
+=== smartsuitcase/app/views/devise/passwords/new.html.erb ===
+<h2>Forgot your password?</h2>
+
+<%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :post }) do |f| %>
+  <%= render "devise/shared/error_messages", resource: resource %>
+
+  <div class="field">
+    <p><%= f.label :email %></p>
+    <p><%= f.email_field :email, autofocus: true, autocomplete: "email" %></p>
+  </div>
+
+  <div class="actions">
+    <%= f.submit "Send me password reset instructions" %>
+  </div>
+<% end %>
+
+<%= render "devise/shared/links" %>
+=== smartsuitcase/app/views/devise/mailer/confirmation_instructions.html.erb ===
+<p>Welcome <%= @email %>!</p>
+
+<p>You can confirm your account email through the link below:</p>
+
+<p><%= link_to 'Confirm my account', confirmation_url(@resource, confirmation_token: @token) %></p>
+=== smartsuitcase/app/views/devise/mailer/reset_password_instructions.html.erb ===
+<p>Hello <%= @resource.email %>!</p>
+
+<p>Someone has requested a link to change your password. You can do this through the link below.</p>
+
+<p><%= link_to 'Change my password', edit_password_url(@resource, reset_password_token: @token) %></p>
+
+<p>If you didn't request this, please ignore this email.</p>
+<p>Your password won't change until you access the link above and create a new one.</p>
+=== smartsuitcase/app/views/devise/mailer/password_change.html.erb ===
+<p>Hello <%= @resource.email %>!</p>
+
+<p>We're contacting you to notify you that your password has been changed.</p>
+=== smartsuitcase/app/views/devise/mailer/email_changed.html.erb ===
+<p>Hello <%= @email %>!</p>
+
+<% if @resource.try(:unconfirmed_email?) %>
+  <p>We're contacting you to notify you that your email is being changed to <%= @resource.unconfirmed_email %>.</p>
+<% else %>
+  <p>We're contacting you to notify you that your email has been changed to <%= @resource.email %>.</p>
+<% end %>
+=== smartsuitcase/app/views/devise/mailer/unlock_instructions.html.erb ===
+<p>Hello <%= @resource.email %>!</p>
+
+<p>Your account has been locked due to an excessive number of unsuccessful sign in attempts.</p>
+
+<p>Click the link below to unlock your account:</p>
+
+<p><%= link_to 'Unlock my account', unlock_url(@resource, unlock_token: @token) %></p>
+=== smartsuitcase/app/views/devise/shared/_error_messages.html.erb ===
+<% if resource.errors.any? %>
+  <div id="error_explanation" data-turbo-temporary>
+    <h2>
+      <%= I18n.t("errors.messages.not_saved",
+                 count: resource.errors.count,
+                 resource: resource.class.model_name.human.downcase)
+       %>
+    </h2>
+    <ul>
+      <% resource.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>
+=== smartsuitcase/app/views/devise/shared/_links.html.erb ===
+<%- if controller_name != 'sessions' %>
+  <p><%= link_to "Log in", new_session_path(resource_name) %></p>
+<% end %>
+
+<%- if devise_mapping.registerable? && controller_name != 'registrations' %>
+  <p><%= link_to "Sign up", new_registration_path(resource_name) %></p>
+<% end %>
+
+<%- if devise_mapping.recoverable? && controller_name != 'passwords' && controller_name != 'registrations' %>
+  <p><%= link_to "Forgot your password?", new_password_path(resource_name) %></p>
+<% end %>
+
+<%- if devise_mapping.confirmable? && controller_name != 'confirmations' %>
+  <p><%= link_to "Didn't receive confirmation instructions?", new_confirmation_path(resource_name) %></p>
+<% end %>
+
+<%- if devise_mapping.lockable? && resource_class.unlock_strategy_enabled?(:email) && controller_name != 'unlocks' %>
+  <p><%= link_to "Didn't receive unlock instructions?", new_unlock_path(resource_name) %></p>
+<% end %>
+
+<%- if devise_mapping.omniauthable? %>
+  <%- resource_class.omniauth_providers.each do |provider| %>
+    <p><%= button_to "Sign in with #{OmniAuth::Utils.camelize(provider)}", omniauth_authorize_path(resource_name, provider), data: { turbo: false } %></p>
+  <% end %>
+<% end %>
+=== smartsuitcase/app/views/devise/sessions/new.html.erb ===
+<style>
+  .ssc-page { min-height: 100vh; background: var(--color-bg); padding: 80px 16px 60px 16px; font-family: var(--font-body); display: flex; align-items: center; }
+  .ssc-inner { max-width: 520px; margin: 0 auto; width: 100%; }
+  .ssc-header { text-align: center; margin-bottom: 40px; }
+  .ssc-logo { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 16px; }
+  .ssc-logo-icon { width: 48px; height: 48px; }
+  .ssc-logo-text { font-family: var(--font-display); font-size: 32px; letter-spacing: -0.02em; color: #F0EEE8; line-height: 1; }
+  .ssc-logo-text span { font-style: italic; color: var(--color-primary); }
+  .ssc-tagline { font-size: 13px; color: var(--color-text-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .ssc-card { background: var(--color-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 40px; position: relative; overflow: visible; }
+  .ssc-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--color-primary), var(--color-accent)); }
+  .ssc-field { margin-bottom: 24px; position: relative; }
+  .ssc-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 8px; }
+  .ssc-label i { color: var(--color-primary); margin-right: 4px; }
+  .ssc-input { width: 100%; background: var(--color-surface); border: 1.5px solid var(--color-border); border-radius: var(--radius-md); padding: 12px 16px; color: #F0EEE8; font-family: var(--font-body); font-size: 15px; outline: none; appearance: none; -webkit-appearance: none; }
+  .ssc-input::placeholder { color: var(--color-text-muted); }
+  .ssc-input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-dim); }
+  .ssc-submit { width: 100%; padding: 15px; background: var(--color-primary); color: var(--color-text-inverse); border: none; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+  .ssc-submit:hover { background: var(--color-primary-light); box-shadow: var(--shadow-gold); transform: translateY(-1px); }
+  a { color: var(--color-primary); text-decoration: none; }
+  a:hover { color: var(--color-primary-light); }
+</style>
+
+<div class="ssc-page">
+  <div class="ssc-inner">
+    <div class="ssc-header">
+      <div class="ssc-logo">
+        <svg class="ssc-logo-icon" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="24" width="52" height="38" rx="6" fill="#22263A" stroke="#C9A84C" stroke-width="1.5"/>
+          <path d="M26 24V20C26 16.686 28.686 14 32 14H40C43.314 14 46 16.686 46 20V24" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="10" y1="43" x2="62" y2="43" stroke="#C9A84C" stroke-width="1"/>
+          <circle cx="36" cy="33" r="3.5" fill="#3ECFB2"/>
+          <rect x="8" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+          <rect x="60" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+        </svg>
+        <div class="ssc-logo-text">Smart<span>SuitCase</span></div>
+      </div>
+      <div class="ssc-tagline">Pack smart. Travel light.</div>
+    </div>
+
+    <div class="ssc-card">
+      <h2 style="font-family: var(--font-display); color: #F0EEE8; font-size: 22px; margin-bottom: 28px; text-align: center;">Sign In</h2>
+
+      <%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
+        <div class="ssc-field">
+          <label class="ssc-label"><i class="bi bi-envelope"></i> Email</label>
+          <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "ssc-input", placeholder: "your@email.com" %>
+        </div>
+        <div class="ssc-field">
+          <label class="ssc-label"><i class="bi bi-lock"></i> Password</label>
+          <%= f.password_field :password, autocomplete: "current-password", class: "ssc-input", placeholder: "••••••••" %>
+        </div>
+        <% if devise_mapping.rememberable? %>
+          <div class="ssc-field" style="display:flex; align-items:center; gap:10px;">
+            <%= f.check_box :remember_me, style: "width:18px; height:18px; accent-color: var(--color-primary);" %>
+            <span style="color: var(--color-text-muted); font-size: 14px;">Remember me</span>
+          </div>
+        <% end %>
+        <%= f.submit "Sign In", class: "ssc-submit" %>
+      <% end %>
+
+      <div style="text-align: center; margin-top: 20px; font-size: 13px; color: var(--color-text-muted);">
+        <%= render "devise/shared/links" %>
+      </div>
+    </div>
+  </div>
+</div>
+=== smartsuitcase/app/views/devise/confirmations/new.html.erb ===
+<h2>Resend confirmation instructions</h2>
+
+<%= form_for(resource, as: resource_name, url: confirmation_path(resource_name), html: { method: :post }) do |f| %>
+  <%= render "devise/shared/error_messages", resource: resource %>
+
+  <div class="field">
+    <p><%= f.label :email %></p>
+    <p><%= f.email_field :email, autofocus: true, autocomplete: "email", value: (resource.pending_reconfirmation? ? resource.unconfirmed_email : resource.email) %></p>
+  </div>
+
+  <div class="actions">
+    <%= f.submit "Resend confirmation instructions" %>
+  </div>
+<% end %>
+
+<%= render "devise/shared/links" %>
+=== smartsuitcase/app/views/devise/registrations/edit.html.erb ===
+<h2>Edit <%= resource_name.to_s.humanize %></h2>
+
+<%= form_for(resource, as: resource_name, url: registration_path(resource_name), html: { method: :put }) do |f| %>
+  <%= render "devise/shared/error_messages", resource: resource %>
+
+  <div class="field">
+    <p><%= f.label :email %></p>
+    <p><%= f.email_field :email, autofocus: true, autocomplete: "email" %></p>
+  </div>
+
+  <% if devise_mapping.confirmable? && resource.pending_reconfirmation? %>
+    <div>Currently waiting confirmation for: <%= resource.unconfirmed_email %></div>
+  <% end %>
+
+  <div class="field">
+    <p><%= f.label :password %> <i>(leave blank if you don't want to change it)</i></p>
+    <p><%= f.password_field :password, autocomplete: "new-password" %></p>
+    <% if @minimum_password_length %>
+      <p><em><%= @minimum_password_length %> characters minimum</em></p>
+    <% end %>
+  </div>
+
+  <div class="field">
+    <p><%= f.label :password_confirmation %></p>
+    <p><%= f.password_field :password_confirmation, autocomplete: "new-password" %></p>
+  </div>
+
+  <div class="field">
+    <p><%= f.label :current_password %> <i>(we need your current password to confirm your changes)</i></p>
+    <p><%= f.password_field :current_password, autocomplete: "current-password" %></p>
+  </div>
+
+  <div class="actions">
+    <%= f.submit "Update" %>
+  </div>
+<% end %>
+
+<h3>Cancel my account</h3>
+
+<div>Unhappy? <%= button_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?", turbo_confirm: "Are you sure?" }, method: :delete %></div>
+
+<%= link_to "Back", :back %>
+=== smartsuitcase/app/views/devise/registrations/new.html.erb ===
+<style>
+  .ssc-page { min-height: 100vh; background: var(--color-bg); padding: 80px 16px 60px 16px; font-family: var(--font-body); display: flex; align-items: center; }
+  .ssc-inner { max-width: 520px; margin: 0 auto; width: 100%; }
+  .ssc-header { text-align: center; margin-bottom: 40px; }
+  .ssc-logo { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 16px; }
+  .ssc-logo-icon { width: 48px; height: 48px; }
+  .ssc-logo-text { font-family: var(--font-display); font-size: 32px; letter-spacing: -0.02em; color: #F0EEE8; line-height: 1; }
+  .ssc-logo-text span { font-style: italic; color: var(--color-primary); }
+  .ssc-tagline { font-size: 13px; color: var(--color-text-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .ssc-card { background: var(--color-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 40px; position: relative; overflow: visible; }
+  .ssc-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--color-primary), var(--color-accent)); }
+  .ssc-field { margin-bottom: 24px; position: relative; }
+  .ssc-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 8px; }
+  .ssc-label i { color: var(--color-primary); margin-right: 4px; }
+  .ssc-input { width: 100%; background: var(--color-surface); border: 1.5px solid var(--color-border); border-radius: var(--radius-md); padding: 12px 16px; color: #F0EEE8; font-family: var(--font-body); font-size: 15px; outline: none; appearance: none; -webkit-appearance: none; }
+  .ssc-input::placeholder { color: var(--color-text-muted); }
+  .ssc-input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-dim); }
+  .ssc-submit { width: 100%; padding: 15px; background: var(--color-primary); color: var(--color-text-inverse); border: none; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+  .ssc-submit:hover { background: var(--color-primary-light); box-shadow: var(--shadow-gold); transform: translateY(-1px); }
+  .ssc-errors { background: rgba(224,92,92,0.1); border: 1px solid rgba(224,92,92,0.25); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 24px; color: #E05C5C; font-size: 13px; }
+  .ssc-errors ul { margin: 0; padding-left: 16px; }
+</style>
+
+<div class="ssc-page">
+  <div class="ssc-inner">
+    <div class="ssc-header">
+      <div class="ssc-logo">
+        <svg class="ssc-logo-icon" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="24" width="52" height="38" rx="6" fill="#22263A" stroke="#C9A84C" stroke-width="1.5"/>
+          <path d="M26 24V20C26 16.686 28.686 14 32 14H40C43.314 14 46 16.686 46 20V24" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="10" y1="43" x2="62" y2="43" stroke="#C9A84C" stroke-width="1"/>
+          <circle cx="36" cy="33" r="3.5" fill="#3ECFB2"/>
+          <rect x="8" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+          <rect x="60" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+        </svg>
+        <div class="ssc-logo-text">Smart<span>SuitCase</span></div>
+      </div>
+      <div class="ssc-tagline">Pack smart. Travel light.</div>
+    </div>
+
+    <div class="ssc-card">
+      <h2 style="font-family: var(--font-display); color: #F0EEE8; font-size: 22px; margin-bottom: 28px; text-align: center;">Create Account</h2>
+
+      <%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
+        <%= render "devise/shared/error_messages", resource: resource %>
+
+        <div class="ssc-field">
+          <label class="ssc-label"><i class="bi bi-envelope"></i> Email</label>
+          <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "ssc-input", placeholder: "your@email.com" %>
+        </div>
+        <div class="ssc-field">
+          <label class="ssc-label"><i class="bi bi-lock"></i> Password</label>
+          <% if @minimum_password_length %>
+            <span style="font-size: 11px; color: var(--color-text-muted);">(<%= @minimum_password_length %> characters minimum)</span>
+          <% end %>
+          <%= f.password_field :password, autocomplete: "new-password", class: "ssc-input", placeholder: "••••••••" %>
+        </div>
+        <div class="ssc-field">
+          <label class="ssc-label"><i class="bi bi-lock-fill"></i> Confirm Password</label>
+          <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "ssc-input", placeholder: "••••••••" %>
+        </div>
+        <%= f.submit "Create Account", class: "ssc-submit" %>
+      <% end %>
+
+      <div style="text-align: center; margin-top: 20px; font-size: 13px; color: var(--color-text-muted);">
+        <%= render "devise/shared/links" %>
+      </div>
+    </div>
+  </div>
+</div>
+=== smartsuitcase/app/views/layouts/application.html.erb ===
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "SmartSuitCase - Travel Worry-Free" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <body style="background: var(--color-bg); min-height: 100vh; color: var(--color-text); font-family: var(--font-body); margin: 0;">
+
+    <nav style="position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: var(--color-card); border-bottom: 1px solid var(--color-border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;">
+      <%= link_to root_path, style: "display:flex; align-items:center; gap:10px; text-decoration:none;" do %>
+        <svg width="28" height="28" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="24" width="52" height="38" rx="6" fill="#22263A" stroke="#C9A84C" stroke-width="1.5"/>
+          <path d="M26 24V20C26 16.686 28.686 14 32 14H40C43.314 14 46 16.686 46 20V24" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="10" y1="43" x2="62" y2="43" stroke="#C9A84C" stroke-width="1"/>
+          <circle cx="36" cy="33" r="3.5" fill="#3ECFB2"/>
+          <rect x="8" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+          <rect x="60" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+        </svg>
+        <span style="font-family: var(--font-display); font-size: 20px; color: #F0EEE8;">Smart<span style="font-style: italic; color: var(--color-primary);">SuitCase</span></span>
+      <% end %>
+
+      <% if user_signed_in? %>
+        <div style="display:flex; align-items:center; gap:20px;">
+          <%= link_to my_trips_path, style: "display:flex; align-items:center; gap:6px; text-decoration:none; color: var(--color-text-muted); font-size: 14px; font-weight: 600;" do %>
+            <i class="bi bi-suitcase2" style="color: var(--color-primary);"></i> My Trips
+          <% end %>
+          <%= button_to destroy_user_session_path, method: :delete, style: "background:none; border:none; cursor:pointer; color: var(--color-text-muted); font-size: 14px; font-weight: 600; font-family: var(--font-body); display:flex; align-items:center; gap:6px;" do %>
+            <i class="bi bi-box-arrow-right" style="color: var(--color-primary);"></i> Logout
+          <% end %>
+        </div>
+      <% end %>
+    </nav>
+
+    <%= yield %>
+
+  </body>
+</html>
+=== smartsuitcase/app/views/layouts/mailer.html.erb ===
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <style>
+      /* Email styles need to be inline */
+    </style>
+  </head>
+
+  <body>
+    <%= yield %>
+  </body>
+</html>
+=== smartsuitcase/app/views/layouts/mailer.text.erb ===
+<%= yield %>
+=== smartsuitcase/app/views/pwa/manifest.json.erb ===
+{
+  "name": "Smartsuitcase",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "/icon.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "scope": "/",
+  "description": "Smartsuitcase.",
+  "theme_color": "red",
+  "background_color": "red"
+}
+=== smartsuitcase/app/views/pwa/service-worker.js ===
+// Add a service worker for processing Web Push notifications:
+//
+// self.addEventListener("push", async (event) => {
+//   const { title, options } = await event.data.json()
+//   event.waitUntil(self.registration.showNotification(title, options))
+// })
+//
+// self.addEventListener("notificationclick", function(event) {
+//   event.notification.close()
+//   event.waitUntil(
+//     clients.matchAll({ type: "window" }).then((clientList) => {
+//       for (let i = 0; i < clientList.length; i++) {
+//         let client = clientList[i]
+//         let clientPath = (new URL(client.url)).pathname
+//
+//         if (clientPath == event.notification.data.path && "focus" in client) {
+//           return client.focus()
+//         }
+//       }
+//
+//       if (clients.openWindow) {
+//         return clients.openWindow(event.notification.data.path)
+//       }
+//     })
+//   )
+// })
+=== smartsuitcase/app/views/trips/edit.html.erb ===
+<style>
+  .ssc-page {
+    min-height: 100vh;
+    background: var(--color-bg);
+    padding: 80px 16px 60px 16px;
+    font-family: var(--font-body);
+    display: flex;
+    align-items: center;
+  }
+  .ssc-inner { max-width: 520px; margin: 0 auto; width: 100%; }
+  .ssc-header { text-align: center; margin-bottom: 40px; }
+  .ssc-logo { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 16px; }
+  .ssc-logo-icon { width: 48px; height: 48px; }
+  .ssc-logo-text { font-family: var(--font-display); font-size: 32px; letter-spacing: -0.02em; color: #F0EEE8; line-height: 1; }
+  .ssc-logo-text span { font-style: italic; color: var(--color-primary); }
+  .ssc-tagline { font-size: 13px; color: var(--color-text-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .ssc-card { background: var(--color-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 40px; position: relative; overflow: visible; }
+  .ssc-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--color-primary), var(--color-accent)); }
+  .ssc-errors { background: rgba(224,92,92,0.1); border: 1px solid rgba(224,92,92,0.25); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 24px; color: #E05C5C; font-size: 13px; }
+  .ssc-errors ul { margin: 0; padding-left: 16px; }
+  .ssc-field { margin-bottom: 24px; position: relative; overflow: visible; }
+  .ssc-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 8px; }
+  .ssc-label i { color: var(--color-primary); margin-right: 4px; }
+  .ssc-input, .ssc-select { width: 100%; background: var(--color-surface); border: 1.5px solid var(--color-border); border-radius: var(--radius-md); padding: 12px 16px; color: #F0EEE8; font-family: var(--font-body); font-size: 15px; transition: border-color var(--transition-fast), box-shadow var(--transition-fast); outline: none; appearance: none; -webkit-appearance: none; }
+  .ssc-input::placeholder { color: var(--color-text-muted); }
+  .ssc-input:focus, .ssc-select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-dim); }
+  .ssc-select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A8099' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 40px; cursor: pointer; }
+  .ssc-select option { background: var(--color-surface); color: #F0EEE8; }
+  .ssc-date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .ssc-autocomplete-wrapper { position: relative; }
+  .autocomplete-suggestions { position: absolute; z-index: 200; width: 100%; background: var(--color-surface); border: 1.5px solid var(--color-border); border-top: none; border-radius: 0 0 var(--radius-md) var(--radius-md); overflow: hidden; }
+  .autocomplete-suggestions:not(:empty) { display: block !important; visibility: visible !important; opacity: 1 !important; }
+  .autocomplete-suggestions .suggestion-item { padding: 10px 16px; font-size: 14px; color: #F0EEE8; cursor: pointer; transition: background var(--transition-fast); }
+  .autocomplete-suggestions .suggestion-item:hover { background: var(--color-card); color: var(--color-primary); }
+  .traveler-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .ssc-add-traveler { background: transparent; border: 1.5px dashed var(--color-border); border-radius: var(--radius-md); color: var(--color-text-muted); padding: 10px 16px; font-size: 13px; cursor: pointer; width: 100%; transition: all var(--transition-fast); font-family: var(--font-body); margin-top: 4px; }
+  .ssc-add-traveler:hover { border-color: var(--color-primary); color: var(--color-primary); }
+  .ssc-submit { width: 100%; padding: 15px; background: var(--color-primary); color: var(--color-text-inverse); border: none; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 15px; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; transition: all var(--transition-fast); margin-top: 8px; }
+  .ssc-submit:hover { background: var(--color-primary-light); box-shadow: var(--shadow-gold); transform: translateY(-1px); }
+  .ssc-submit:active { transform: translateY(0); }
+</style>
+
+<div class="ssc-page">
+  <div class="ssc-inner">
+
+    <div class="ssc-header">
+      <div class="ssc-logo">
+        <svg class="ssc-logo-icon" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="24" width="52" height="38" rx="6" fill="#22263A" stroke="#C9A84C" stroke-width="1.5"/>
+          <path d="M26 24V20C26 16.686 28.686 14 32 14H40C43.314 14 46 16.686 46 20V24" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="10" y1="43" x2="62" y2="43" stroke="#C9A84C" stroke-width="1"/>
+          <circle cx="36" cy="33" r="3.5" fill="#3ECFB2"/>
+          <rect x="8" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+          <rect x="60" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+        </svg>
+        <div class="ssc-logo-text">Smart<span>SuitCase</span></div>
+      </div>
+      <div class="ssc-tagline">Edit your trip</div>
+    </div>
+
+    <div class="ssc-card">
+
+      <%= form_with model: @trip, url: trip_path(@trip), method: :patch do |f| %>
+
+        <% if @trip.errors.any? %>
+          <div class="ssc-errors">
+            <ul>
+              <% @trip.errors.full_messages.each do |msg| %>
+                <li><%= msg %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div class="ssc-field">
+          <%= f.label :destination, class: "ssc-label" do %>
+            <i class="bi bi-geo-alt-fill"></i> Destination
+          <% end %>
+          <div class="ssc-autocomplete-wrapper" data-controller="autocomplete">
+            <%= f.text_field :destination,
+                class: "ssc-input",
+                placeholder: "Paris, Tokyo, New York...",
+                required: true,
+                data: {
+                  autocomplete_target: "input",
+                  action: "input->autocomplete#filter blur->autocomplete#hide"
+                } %>
+            <div class="autocomplete-suggestions" data-autocomplete-target="suggestions"></div>
+          </div>
+        </div>
+
+        <div class="ssc-date-row" data-controller="date">
+          <div>
+            <%= f.label :start_date, class: "ssc-label" do %>
+              <i class="bi bi-calendar-event"></i> Start Date
+            <% end %>
+            <%= f.date_field :start_date, class: "ssc-input", required: true, min: Date.today,
+                data: { date_target: "startDate", action: "change->date#updateEndDateMin" } %>
+          </div>
+          <div>
+            <%= f.label :end_date, class: "ssc-label" do %>
+              <i class="bi bi-calendar-event"></i> End Date
+            <% end %>
+            <%= f.date_field :end_date, class: "ssc-input", required: true, min: Date.today,
+                data: { date_target: "endDate" } %>
+          </div>
+        </div>
+
+        <div class="ssc-field">
+          <%= f.label :trip_type, class: "ssc-label" do %>
+            <i class="bi bi-compass"></i> Trip Type
+          <% end %>
+          <%= f.select :trip_type,
+              [["🏙️ City Break", "city"], ["🏖️ Beach Vacation", "beach"], ["💼 Business Trip", "business"]],
+              {}, class: "ssc-select" %>
+        </div>
+
+        <div class="ssc-field">
+          <%= f.label :luggage_type, class: "ssc-label" do %>
+            <i class="bi bi-luggage"></i> Luggage Type
+          <% end %>
+          <%= f.select :luggage_type,
+              [["✈️ Cabin (50L)", "cabin"], ["🧳 Checked (100L)", "checked"]],
+              {}, class: "ssc-select" %>
+        </div>
+
+        <div class="ssc-field">
+          <span class="ssc-label"><i class="bi bi-lightning"></i> Options</span>
+          <label style="display:flex; align-items:center; gap:10px; color:#F0EEE8; cursor:pointer;">
+            <%= f.check_box :sport, style: "width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;" %>
+            🏃 Sport / Activité physique
+          </label>
+        </div>
+
+        <div class="ssc-field" data-controller="travelers">
+          <span class="ssc-label"><i class="bi bi-people"></i> Voyageurs</span>
+          <div id="travelers-list" data-travelers-target="list">
+            <%= f.fields_for :travelers do |t| %>
+              <div class="traveler-row">
+                <%= t.text_field :name, class: "ssc-input", placeholder: "Prénom" %>
+                <%= t.select :role, [["👤 Adulte", "adult"], ["👦 Enfant", "child"]], {}, class: "ssc-select" %>
+              </div>
+            <% end %>
+          </div>
+          <button type="button" class="ssc-add-traveler" data-action="click->travelers#add">
+            + Ajouter un voyageur
+          </button>
+        </div>
+
+        <%= f.submit "✦ Update My Packing List", class: "ssc-submit" %>
+
+      <% end %>
+    </div>
+
+  </div>
+</div>
+=== smartsuitcase/app/views/trips/show.html.erb ===
+<style>
+  .ssc-page {
+    min-height: 100vh;
+    background: var(--color-bg);
+    padding: 40px 16px;
+    font-family: var(--font-body);
+  }
+
+  .ssc-inner {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .ssc-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .ssc-title {
+    font-family: var(--font-display);
+    font-size: 42px;
+    letter-spacing: -0.02em;
+    color: #F0EEE8;
+    margin-bottom: 8px;
+    line-height: 1.1;
+  }
+
+  .ssc-title span {
+    font-style: italic;
+    color: var(--color-primary);
+  }
+
+  .ssc-subtitle {
+    font-size: 16px;
+    color: var(--color-text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .ssc-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ssc-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  }
+
+  .ssc-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-primary);
+    margin-bottom: var(--space-6);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ssc-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .ssc-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ssc-detail-label {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+
+  .ssc-detail-value {
+    font-size: 15px;
+    color: #F0EEE8;
+    font-weight: 500;
+  }
+
+  .ssc-weather-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .ssc-weather-row::-webkit-scrollbar { height: 4px; }
+  .ssc-weather-row::-webkit-scrollbar-track { background: var(--color-border); border-radius: 2px; }
+  .ssc-weather-row::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 2px; }
+
+  .ssc-weather-day {
+    min-width: 76px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 14px 8px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .ssc-weather-dow {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .ssc-weather-icon { font-size: 24px; margin-bottom: 8px; }
+
+  .ssc-weather-temp {
+    font-size: 14px;
+    font-weight: 700;
+    color: #F0EEE8;
+  }
+
+  .ssc-weather-rain {
+    font-size: 12px;
+    color: var(--color-accent);
+    margin-top: 4px;
+  }
+
+  .ssc-traveler-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #F0EEE8;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ssc-traveler-badge {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+  }
+
+  .ssc-traveler-badge.adult {
+    background: rgba(201,168,76,0.15);
+    color: var(--color-primary);
+    border: 1px solid rgba(201,168,76,0.25);
+  }
+
+  .ssc-traveler-badge.child {
+    background: rgba(62,207,178,0.15);
+    color: var(--color-accent);
+    border: 1px solid rgba(62,207,178,0.25);
+  }
+
+  .ssc-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .ssc-table thead tr {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .ssc-table th {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    padding: 0 0 12px 0;
+    text-align: left;
+  }
+
+  .ssc-table th:nth-child(2),
+  .ssc-table td:nth-child(2) { text-align: left; width: 60px; }
+
+  .ssc-table th:nth-child(3),
+  .ssc-table td:nth-child(3) { text-align: center; width: 40px; }
+
+  .ssc-table tbody tr {
+    border-bottom: 1px solid rgba(46,51,71,0.5);
+    transition: background var(--transition-fast);
+  }
+
+  .ssc-table tbody tr:last-child { border-bottom: none; }
+  .ssc-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  .ssc-table td {
+    padding: 12px 0;
+    color: #F0EEE8;
+    font-size: 14px;
+  }
+
+  .ssc-table td:last-child { text-align: right; }
+
+  .ssc-qty-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 8px;
+    background: var(--color-primary-dim);
+    color: var(--color-primary-light);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .ssc-capacity-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .ssc-capacity-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #F0EEE8;
+  }
+
+  .ssc-capacity-pct {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+
+  .ssc-capacity-pct.over { color: var(--color-error); }
+
+  .ssc-progress-track {
+    height: 8px;
+    background: var(--color-border);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .ssc-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+    transition: width 0.6s ease;
+  }
+
+  .ssc-progress-fill.over {
+    background: linear-gradient(90deg, var(--color-error), #f08080);
+  }
+
+  .ssc-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+  }
+
+  .ssc-alert.success {
+    background: rgba(62,207,178,0.1);
+    border: 1px solid rgba(62,207,178,0.25);
+    color: var(--color-accent);
+  }
+
+  .ssc-alert.danger {
+    background: rgba(224,92,92,0.1);
+    border: 1px solid rgba(224,92,92,0.25);
+    color: #E05C5C;
+  }
+
+  .ssc-alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .ssc-alert strong { display: block; margin-bottom: 2px; }
+
+  .ssc-cta {
+    text-align: center;
+    margin-top: 32px;
+  }
+
+  .ssc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 32px;
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .ssc-btn:hover {
+    background: var(--color-primary-light);
+    color: var(--color-text-inverse);
+    box-shadow: var(--shadow-gold);
+    transform: translateY(-1px);
+  }
+
+  .ssc-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 24px 0;
+  }
+</style>
+
+<div class="ssc-page">
+  <div class="ssc-inner">
+
+    <!-- Header -->
+    <div class="ssc-header">
+      <h1 class="ssc-title">Your <span>Packing List</span></h1>
+      <div class="ssc-subtitle"><%= @trip.destination.titleize %></div>
+    </div>
+
+    <!-- Trip Details -->
+    <div class="ssc-card">
+      <div class="ssc-card-title">
+        <i class="bi bi-info-circle"></i> Trip Details
+      </div>
+      <div class="ssc-details-grid">
+        <div class="ssc-detail-item">
+          <span class="ssc-detail-label"><i class="bi bi-geo-alt"></i> Destination</span>
+          <span class="ssc-detail-value"><%= @trip.destination.titleize %></span>
+        </div>
+        <div class="ssc-detail-item">
+          <span class="ssc-detail-label"><i class="bi bi-calendar-range"></i> Dates</span>
+          <span class="ssc-detail-value"><%= @trip.start_date.strftime("%b %d") %> — <%= @trip.end_date.strftime("%b %d, %Y") %></span>
+        </div>
+        <div class="ssc-detail-item">
+          <span class="ssc-detail-label"><i class="bi bi-compass"></i> Type</span>
+          <span class="ssc-detail-value"><%= @trip.trip_type.titleize %></span>
+        </div>
+        <div class="ssc-detail-item">
+          <span class="ssc-detail-label"><i class="bi bi-luggage"></i> Luggage</span>
+          <span class="ssc-detail-value"><%= @trip.luggage_type.titleize %></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weather Forecast -->
+    <% if @result[:forecast]&.any? %>
+      <div class="ssc-card">
+        <div class="ssc-card-title">
+          <i class="bi bi-cloud-sun"></i> Weather Forecast
+        </div>
+        <div class="ssc-weather-row">
+          <% @result[:forecast].each do |day| %>
+            <div class="ssc-weather-day">
+              <div class="ssc-weather-dow"><%= day[:date].strftime("%a") %></div>
+              <div class="ssc-weather-icon">
+                <%= case day[:icon]
+                    when "Clear"        then "☀️"
+                    when "Clouds"       then "☁️"
+                    when "Rain"         then "🌧️"
+                    when "Drizzle"      then "🌦️"
+                    when "Thunderstorm" then "⛈️"
+                    when "Snow"         then "❄️"
+                    else "🌤️"
+                    end %>
+              </div>
+              <div class="ssc-weather-temp"><%= day[:temp] %>°C</div>
+              <% if day[:rain] %>
+                <div class="ssc-weather-rain">☔</div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+        <p style="margin-top:12px; font-size:12px; color:var(--color-text-muted); text-align:center; font-style:italic;">
+          La météo affichée est celle des 7 prochains jours — pensez à mettre à jour votre trip à J-2 pour une liste encore plus précise.
+        </p>
+      </div>
+    <% end %>
+
+    <!-- Packing List par voyageur -->
+    <% @result[:packing_per_traveler].each do |entry| %>
+      <div class="ssc-card">
+        <div class="ssc-traveler-title">
+          <%= entry[:traveler].role == "child" ? "👦" : "👤" %>
+          <%= entry[:traveler].name %>
+          <span class="ssc-traveler-badge <%= entry[:traveler].role %>">
+            <%= entry[:traveler].role == "child" ? "Enfant" : "Adulte" %>
+          </span>
+        </div>
+        <table class="ssc-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qté</th>
+              <th>Check</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% entry[:items].each do |item| %>
+              <tr>
+                <td><%= item[:name].titleize %></td>
+                <td><span class="ssc-qty-badge"><%= item[:quantity] %></span></td>
+                <td><input type="checkbox" style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <!-- Accessoires + Capacité dans le même controller -->
+    <div data-controller="accessories"
+         data-accessories-total-value="<%= @result[:total_points] %>"
+         data-accessories-capacity-value="<%= @result[:capacity] %>">
+
+      <!-- Accessoires optionnels -->
+      <div class="ssc-card">
+        <div class="ssc-card-title">
+          <i class="bi bi-bag-plus"></i> Accessoires optionnels
+        </div>
+        <table class="ssc-table">
+          <tbody>
+            <tr>
+              <td>Sèche-cheveux</td><td></td>
+              <td><input type="checkbox" data-accessories-target="item" data-points="12"
+                   style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"
+                   data-action="change->accessories#update"></td>
+            </tr>
+            <tr>
+              <td>Fer à lisser</td><td></td>
+              <td><input type="checkbox" data-accessories-target="item" data-points="6"
+                   style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"
+                   data-action="change->accessories#update"></td>
+            </tr>
+            <tr>
+              <td>PC portable</td><td></td>
+              <td><input type="checkbox" data-accessories-target="item" data-points="6"
+                   style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"
+                   data-action="change->accessories#update"></td>
+            </tr>
+            <tr>
+              <td>Tablette</td><td></td>
+              <td><input type="checkbox" data-accessories-target="item" data-points="6"
+                   style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"
+                   data-action="change->accessories#update"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Capacité totale -->
+      <div class="ssc-card">
+        <div class="ssc-card-title">
+          <i class="bi bi-luggage-fill"></i> Luggage Capacity
+        </div>
+
+        <% percentage = (@result[:total_points].to_f / @result[:capacity] * 100).round %>
+
+        <div class="ssc-capacity-label">
+          <span class="ssc-capacity-title">Total</span>
+          <span class="ssc-capacity-pct <%= percentage > 100 ? 'over' : '' %>"
+                data-accessories-target="pct"><%= percentage %>%</span>
+        </div>
+
+        <div class="ssc-progress-track">
+          <div class="ssc-progress-fill <%= percentage > 100 ? 'over' : '' %>"
+               data-accessories-target="bar"
+               style="width: <%= [percentage, 100].min %>%;"></div>
+        </div>
+
+        <% if @result[:fits] %>
+          <div class="ssc-alert success">
+            <span class="ssc-alert-icon">✓</span>
+            <div>
+              <strong>Everything fits!</strong>
+              Your <%= @trip.luggage_type %> luggage is good to go.
+            </div>
+          </div>
+        <% else %>
+          <div class="ssc-alert danger">
+            <span class="ssc-alert-icon">⚠</span>
+            <div>
+              <strong><%= percentage - 100 %>% over capacity.</strong>
+              Consider removing some items or switching to checked luggage.
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+    </div>
+
+    <!-- CTA -->
+    <div class="ssc-cta" style="display:flex; gap:12px; justify-content:center;">
+      <%= link_to edit_trip_path(@trip), class: "ssc-btn" do %>
+        <i class="bi bi-pencil"></i> Edit Trip
+      <% end %>
+      <%= link_to new_trip_path, class: "ssc-btn", style: "background: var(--color-surface); color: #F0EEE8; border: 1px solid var(--color-border);" do %>
+        <i class="bi bi-plus-circle"></i> New Trip
+      <% end %>
+    </div>
+
+  </div>
+</div>
+=== smartsuitcase/app/views/trips/new.html.erb ===
+<style>
+  .ssc-page {
+    min-height: 100vh;
+    background: var(--color-bg);
+    padding: 60px 16px;
+    font-family: var(--font-body);
+    display: flex;
+    align-items: center;
+  }
+
+  .ssc-inner {
+    max-width: 520px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .ssc-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .ssc-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .ssc-logo-icon { width: 48px; height: 48px; }
+
+  .ssc-logo-text {
+    font-family: var(--font-display);
+    font-size: 32px;
+    letter-spacing: -0.02em;
+    color: #F0EEE8;
+    line-height: 1;
+  }
+
+  .ssc-logo-text span { font-style: italic; color: var(--color-primary); }
+
+  .ssc-tagline {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .ssc-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    position: relative;
+    overflow: visible;
+  }
+
+  .ssc-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  }
+
+  .ssc-errors {
+    background: rgba(224,92,92,0.1);
+    border: 1px solid rgba(224,92,92,0.25);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin-bottom: 24px;
+    color: #E05C5C;
+    font-size: 13px;
+  }
+  .ssc-errors ul { margin: 0; padding-left: 16px; }
+
+  .ssc-field {
+    margin-bottom: 24px;
+    position: relative;
+    overflow: visible;
+  }
+
+  .ssc-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+  }
+  .ssc-label i { color: var(--color-primary); margin-right: 4px; }
+
+  .ssc-input,
+  .ssc-select {
+    width: 100%;
+    background: var(--color-surface);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    color: #F0EEE8;
+    font-family: var(--font-body);
+    font-size: 15px;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .ssc-input::placeholder { color: var(--color-text-muted); }
+
+  .ssc-input:focus,
+  .ssc-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-dim);
+  }
+
+  .ssc-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A8099' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+    cursor: pointer;
+  }
+  .ssc-select option { background: var(--color-surface); color: #F0EEE8; }
+
+  .ssc-date-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .ssc-autocomplete-wrapper { position: relative; }
+
+  .autocomplete-suggestions {
+    position: absolute;
+    z-index: 200;
+    width: 100%;
+    background: var(--color-surface);
+    border: 1.5px solid var(--color-border);
+    border-top: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    overflow: hidden;
+  }
+
+  .autocomplete-suggestions:not(:empty) {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .autocomplete-suggestions .suggestion-item {
+    padding: 10px 16px;
+    font-size: 14px;
+    color: #F0EEE8;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+  }
+
+  .autocomplete-suggestions .suggestion-item:hover {
+    background: var(--color-card);
+    color: var(--color-primary);
+  }
+
+  .traveler-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .ssc-add-traveler {
+    background: transparent;
+    border: 1.5px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    padding: 10px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    width: 100%;
+    transition: all var(--transition-fast);
+    font-family: var(--font-body);
+    margin-top: 4px;
+  }
+
+  .ssc-add-traveler:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .ssc-submit {
+    width: 100%;
+    padding: 15px;
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-top: 8px;
+  }
+
+  .ssc-submit:hover {
+    background: var(--color-primary-light);
+    box-shadow: var(--shadow-gold);
+    transform: translateY(-1px);
+  }
+
+  .ssc-submit:active { transform: translateY(0); }
+</style>
+
+<div class="ssc-page">
+  <div class="ssc-inner">
+
+    <div class="ssc-header">
+      <div class="ssc-logo">
+        <svg class="ssc-logo-icon" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="24" width="52" height="38" rx="6" fill="#22263A" stroke="#C9A84C" stroke-width="1.5"/>
+          <path d="M26 24V20C26 16.686 28.686 14 32 14H40C43.314 14 46 16.686 46 20V24" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="10" y1="43" x2="62" y2="43" stroke="#C9A84C" stroke-width="1"/>
+          <circle cx="36" cy="33" r="3.5" fill="#3ECFB2"/>
+          <path d="M36 26V28.5M36 37.5V40M29 33H31.5M40.5 33H43M31.37 28.37L33.16 30.16M38.84 35.84L40.63 37.63M31.37 37.63L33.16 35.84M38.84 30.16L40.63 28.37" stroke="#3ECFB2" stroke-width="1.2" stroke-linecap="round"/>
+          <rect x="8" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+          <rect x="60" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+        </svg>
+        <div class="ssc-logo-text">Smart<span>SuitCase</span></div>
+      </div>
+      <div class="ssc-tagline">Pack smart. Travel light.</div>
+    </div>
+
+    <div class="ssc-card">
+
+      <%= form_with model: @trip, url: trips_path, method: :post, data: { controller: "trip-warning" } do |f| %>
+
+        <% if @trip.errors.any? %>
+          <div class="ssc-errors">
+            <ul>
+              <% @trip.errors.full_messages.each do |msg| %>
+                <li><%= msg %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div class="ssc-field">
+          <%= f.label :destination, class: "ssc-label" do %>
+            <i class="bi bi-geo-alt-fill"></i> Destination
+          <% end %>
+          <div class="ssc-autocomplete-wrapper" data-controller="autocomplete">
+            <%= f.text_field :destination,
+                class: "ssc-input",
+                placeholder: "Paris, Tokyo, New York...",
+                required: true,
+                data: {
+                  autocomplete_target: "input",
+                  action: "input->autocomplete#filter blur->autocomplete#hide"
+                } %>
+            <div class="autocomplete-suggestions" data-autocomplete-target="suggestions"></div>
+          </div>
+        </div>
+
+        <div class="ssc-date-row" data-controller="date">
+          <div>
+            <%= f.label :start_date, class: "ssc-label" do %>
+              <i class="bi bi-calendar-event"></i> Start Date
+            <% end %>
+            <%= f.date_field :start_date,
+                class: "ssc-input",
+                required: true,
+                min: Date.today,
+                data: {
+                  date_target: "startDate",
+                  action: "change->date#updateEndDateMin"
+                } %>
+          </div>
+          <div>
+            <%= f.label :end_date, class: "ssc-label" do %>
+              <i class="bi bi-calendar-check"></i> End Date
+            <% end %>
+            <%= f.date_field :end_date,
+                class: "ssc-input",
+                required: true,
+                min: Date.today,
+                data: { date_target: "endDate" } %>
+          </div>
+        </div>
+
+        <div class="ssc-field">
+          <%= f.label :trip_type, class: "ssc-label" do %>
+            <i class="bi bi-compass"></i> Trip Type
+          <% end %>
+          <%= f.select :trip_type,
+              [["🏙️ City Break", "city"],
+               ["🏖️ Beach Vacation", "beach"],
+               ["💼 Business Trip", "business"]],
+              {},
+              class: "ssc-select" %>
+        </div>
+
+        <div class="ssc-field">
+          <%= f.label :luggage_type, class: "ssc-label" do %>
+            <i class="bi bi-luggage"></i> Luggage Type
+          <% end %>
+          <%= f.select :luggage_type,
+              [["✈️ Cabin (50L)", "cabin"],
+               ["🧳 Checked (100L)", "checked"]],
+              {},
+              class: "ssc-select" %>
+        </div>
+
+        <!-- Sport -->
+        <div class="ssc-field">
+          <span class="ssc-label">
+            <i class="bi bi-lightning"></i> Options
+          </span>
+          <label style="display:flex; align-items:center; gap:10px; color:#F0EEE8; cursor:pointer;">
+            <%= f.check_box :sport, style: "width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;" %>
+            🏃 Sport / Activité physique
+          </label>
+        </div>
+
+        <!-- Travelers -->
+        <div class="ssc-field" data-controller="travelers">
+          <span class="ssc-label">
+            <i class="bi bi-people"></i> Voyageurs
+          </span>
+          <div id="travelers-list" data-travelers-target="list">
+            <%= f.fields_for :travelers do |t| %>
+              <div class="traveler-row">
+                <%= t.text_field :name, class: "ssc-input", placeholder: "Prénom" %>
+                <%= t.select :role,
+                    [["👤 Adulte", "adult"], ["👦 Enfant", "child"]],
+                    {},
+                    class: "ssc-select" %>
+              </div>
+            <% end %>
+          </div>
+          <button type="button" class="ssc-add-traveler" data-action="click->travelers#add">
+            + Ajouter un voyageur
+          </button>
+        </div>
+
+        <%= f.submit "✦ Generate My Packing List", class: "ssc-submit", data: { action: "click->trip-warning#check" } %>
+      <% end %>
+    </div>
+
+  </div>
+</div>
+=== smartsuitcase/app/views/trips/my_trips.html.erb ===
+<style>
+  .ssc-page { min-height: 100vh; background: var(--color-bg); padding: 80px 16px 60px 16px; font-family: var(--font-body); }
+  .ssc-inner { max-width: 520px; margin: 0 auto; width: 100%; }
+  .ssc-header { text-align: center; margin-bottom: 40px; padding-top: 20px; }
+  .ssc-logo { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 16px; }
+  .ssc-logo-icon { width: 48px; height: 48px; }
+  .ssc-logo-text { font-family: var(--font-display); font-size: 32px; letter-spacing: -0.02em; color: #F0EEE8; line-height: 1; }
+  .ssc-logo-text span { font-style: italic; color: var(--color-primary); }
+  .ssc-tagline { font-size: 13px; color: var(--color-text-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .ssc-card { background: var(--color-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg); position: relative; overflow: hidden; }
+  .ssc-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--color-primary), var(--color-accent)); }
+  .ssc-card-title { font-family: var(--font-display); color: #F0EEE8; font-size: 20px; padding: 24px 24px 16px 24px; }
+  .trip-item { display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--color-border); }
+  .trip-item:last-child { border-bottom: none; }
+  .trip-item:hover { background: var(--color-surface); }
+  .trip-name { font-size: 15px; font-weight: 500; }
+  .trip-arrow { color: var(--color-primary); font-size: 18px; }
+  .empty-state { padding: 40px 24px; text-align: center; color: var(--color-text-muted); font-size: 14px; }
+  .ssc-new-btn { display: block; width: 100%; padding: 15px; background: var(--color-primary); color: var(--color-text-inverse); border: none; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 15px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; margin-top: 16px; }
+  .ssc-new-btn:hover { background: var(--color-primary-light); }
+</style>
+
+<div class="ssc-page">
+  <div class="ssc-inner">
+
+    <div class="ssc-header">
+      <div class="ssc-logo">
+        <svg class="ssc-logo-icon" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="24" width="52" height="38" rx="6" fill="#22263A" stroke="#C9A84C" stroke-width="1.5"/>
+          <path d="M26 24V20C26 16.686 28.686 14 32 14H40C43.314 14 46 16.686 46 20V24" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="10" y1="43" x2="62" y2="43" stroke="#C9A84C" stroke-width="1"/>
+          <circle cx="36" cy="33" r="3.5" fill="#3ECFB2"/>
+          <rect x="8" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+          <rect x="60" y="38" width="4" height="8" rx="2" fill="#C9A84C"/>
+        </svg>
+        <div class="ssc-logo-text">Smart<span>SuitCase</span></div>
+      </div>
+      <div class="ssc-tagline">Pack smart. Travel light.</div>
+    </div>
+
+    <div class="ssc-card">
+      <div class="ssc-card-title">My Trips</div>
+
+      <% if @trips.empty? %>
+        <div class="empty-state">No trips yet — create your first one!</div>
+      <% else %>
+        <% @trips.each do |trip| %>
+          <div class="trip-item">
+            <%= link_to trip_path(trip), style: "display:flex; align-items:center; justify-content:space-between; flex:1; text-decoration:none; color:#F0EEE8;" do %>
+              <span class="trip-name"><%= trip.destination %>, <%= trip.start_date.strftime("%d/%m") %></span>
+              <span class="trip-arrow">→</span>
+            <% end %>
+            <%= button_to trip_path(trip), method: :delete, form: { style: "margin:0;" }, style: "background:none; border:none; cursor:pointer; padding: 0 0 0 16px; color: #E05C5C; font-size: 18px;", data: { turbo_confirm: "Supprimer ce trip ?" } do %>
+              <i class="bi bi-trash"></i>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <%= link_to "✦ New Trip", new_trip_path, class: "ssc-new-btn" %>
+
+  </div>
+</div>
+=== smartsuitcase/app/assets/stylesheets/application.css ===
+:root {
+  --color-bg:           #0D0F14;
+  --color-surface:      #1A1D26;
+  --color-card:         #22263A;
+  --color-border:       #2E3347;
+  --color-primary:      #C9A84C;
+  --color-primary-light:#E8C96B;
+  --color-primary-dim:  rgba(201, 168, 76, 0.15);
+  --color-accent:       #3ECFB2;
+  --color-accent-dim:   rgba(62, 207, 178, 0.15);
+  --color-text:         #F0EEE8;
+  --color-text-muted:   #7A8099;
+  --color-text-inverse: #0D0F14;
+  --color-success:      #3ECFB2;
+  --color-warning:      #E8C96B;
+  --color-error:        #E05C5C;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body:    'DM Sans', system-ui, sans-serif;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-6:24px; --space-8:32px; --space-10:40px; --space-16:64px;
+  --radius-sm:4px; --radius-md:8px; --radius-lg:12px; --radius-pill:100px;
+  --shadow-gold: 0 0 24px rgba(201,168,76,0.15);
+  --shadow-teal: 0 0 16px rgba(62,207,178,0.15);
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+=== smartsuitcase/.ruby-lsp/Gemfile ===
+# This custom gemfile is automatically generated by the Ruby LSP.
+# It should be automatically git ignored, but in any case: do not commit it to your repository.
+
+eval_gemfile(File.expand_path("../Gemfile", __dir__))
+gem "ruby-lsp", require: false, group: :development
+gem "ruby-lsp-rails", require: false, group: :development=== smartsuitcase/Gemfile ===
+source "https://rubygems.org"
+
+# Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
+gem "rails", "~> 8.1.1"
+# The modern asset pipeline for Rails [https://github.com/rails/propshaft]
+gem "propshaft"
+# Use postgresql as the database for Active Record
+gem "pg", "~> 1.1"
+# Use the Puma web server [https://github.com/puma/puma]
+gem "puma", ">= 5.0"
+# Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
+gem "importmap-rails"
+# Hotwire's SPA-like page accelerator [https://turbo.hotwired.dev]
+gem "turbo-rails"
+# Hotwire's modest JavaScript framework [https://stimulus.hotwired.dev]
+gem "stimulus-rails"
+# Build JSON APIs with ease [https://github.com/rails/jbuilder]
+gem "jbuilder"
+
+# Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
+# gem "bcrypt", "~> 3.1.7"
+
+# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+# Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
+gem "solid_cache"
+gem "solid_queue"
+gem "solid_cable"
+
+# Reduces boot times through caching; required in config/boot.rb
+gem "bootsnap", require: false
+
+# Deploy this application anywhere as a Docker container [https://kamal-deploy.org]
+gem "kamal", require: false
+
+# Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
+gem "thruster", require: false
+
+# Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
+gem "image_processing", "~> 1.2"
+
+group :development, :test do
+  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+
+  # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
+  gem "bundler-audit", require: false
+
+  # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
+  gem "brakeman", require: false
+
+  # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
+  gem "rubocop-rails-omakase", require: false
+end
+
+group :development do
+  # Use console on exceptions pages [https://github.com/rails/web-console]
+  gem "web-console"
+end
+
+group :test do
+  # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
+  gem "capybara"
+  gem "selenium-webdriver"
+end
+
+gem "dotenv-rails", "~> 3.2"
+
+gem "httparty", "~> 0.24.2"
+gem "devise"
