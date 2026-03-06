@@ -324,6 +324,69 @@
     background: var(--color-border);
     margin: 24px 0;
   }
+
+  /* Evening outfit +/- */
+  .ssc-evening-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .ssc-evening-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+  }
+
+  .ssc-evening-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .ssc-evening-name {
+    font-size: 14px;
+    color: #F0EEE8;
+  }
+
+  .ssc-counter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ssc-counter-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid var(--color-border);
+    background: var(--color-surface);
+    color: #F0EEE8;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    font-family: var(--font-body);
+    line-height: 1;
+  }
+
+  .ssc-counter-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .ssc-counter-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #F0EEE8;
+    min-width: 20px;
+    text-align: center;
+  }
 </style>
 
 <div class="ssc-page">
@@ -394,41 +457,71 @@
       </div>
     <% end %>
 
-    <!-- Packing List par voyageur -->
-    <% @result[:packing_per_traveler].each do |entry| %>
-      <div class="ssc-card">
-        <div class="ssc-traveler-title">
-          <%= entry[:traveler].role == "child" ? "👦" : "👤" %>
-          <%= entry[:traveler].name %>
-          <span class="ssc-traveler-badge <%= entry[:traveler].role %>">
-            <%= entry[:traveler].role == "child" ? "Enfant" : "Adulte" %>
-          </span>
-        </div>
-        <table class="ssc-table">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Qté</th>
-              <th>Check</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% entry[:items].each do |item| %>
-              <tr>
-                <td><%= item[:name].titleize %></td>
-                <td><span class="ssc-qty-badge"><%= item[:quantity] %></span></td>
-                <td><input type="checkbox" style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    <% end %>
-
     <!-- Accessoires + Capacité dans le même controller -->
     <div data-controller="accessories"
          data-accessories-total-value="<%= @result[:total_points] %>"
          data-accessories-capacity-value="<%= @result[:capacity] %>">
+
+      <!-- Packing List par voyageur -->
+      <% @result[:packing_per_traveler].each do |entry| %>
+        <div class="ssc-card" data-traveler-card>
+          <div class="ssc-traveler-title">
+            <%= entry[:traveler].role == "child" ? "👦" : "👤" %>
+            <%= entry[:traveler].name %>
+            <span class="ssc-traveler-badge <%= entry[:traveler].role %>">
+              <%= entry[:traveler].role == "child" ? "Enfant" : "Adulte" %>
+            </span>
+          </div>
+
+          <table class="ssc-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Qté</th>
+                <th>Check</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% entry[:items].each do |item| %>
+                <tr>
+                  <td><%= item[:name].titleize %></td>
+                  <td><span class="ssc-qty-badge"><%= item[:quantity] %></span></td>
+                  <td><input type="checkbox" style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"></td>
+                </tr>
+              <% end %>
+              <!-- Lignes evening — masquées si count = 0 -->
+              <tr data-evening-item="outfit" style="display:none;">
+                <td>👗 Woman Evening Outfit</td>
+                <td><span class="ssc-qty-badge" data-qty>0</span></td>
+                <td><input type="checkbox" style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"></td>
+              </tr>
+              <tr data-evening-item="shoes" style="display:none;">
+                <td>👠 Evening Shoes</td>
+                <td><span class="ssc-qty-badge" data-qty>0</span></td>
+                <td><input type="checkbox" style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <% if entry[:traveler].role == "adult" %>
+            <div class="ssc-evening-section" data-evening-wrapper>
+              <div class="ssc-evening-label">👗 Women's Evening Outfit</div>
+              <div class="ssc-evening-control">
+                <span class="ssc-evening-name">Add an outfit</span>
+                <div class="ssc-counter">
+                  <button type="button" class="ssc-counter-btn"
+                          data-action="click->accessories#decrementEvening">−</button>
+                  <span class="ssc-counter-value"
+                        data-accessories-target="eveningCount">0</span>
+                  <button type="button" class="ssc-counter-btn"
+                          data-action="click->accessories#incrementEvening">+</button>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
+        </div>
+      <% end %>
 
       <!-- Accessoires optionnels -->
       <div class="ssc-card">
