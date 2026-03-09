@@ -1,28 +1,28 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["item", "pct", "bar", "eveningCount", "sportCount",
-                    "extraBagRadio", "overAlert", "fitsAlert",
-                    "extraBagSection", "extraBagCard",
-                    "extraBagPct", "extraBagBar", "extraBagLabel", "extraBagUsed", "extraBagCapacity"]
+ static targets = ["item", "pct", "bar", "eveningCount", "sportCount",
+                  "extraBagRadio", "overAlert", "fitsAlert", "overPts",
+                  "extraBagSection", "extraBagCard",
+                  "extraBagPct", "extraBagBar", "extraBagLabel", "extraBagUsed", "extraBagCapacity"]
   static values = { total: Number, capacity: Number }
+
+  connect() {
+  this._onItemUpdated = (e) => {
+    this.totalValue += e.detail.delta
+    this.recalculate()
+  }
+  document.addEventListener("packing-item:updated", this._onItemUpdated)
+  this.recalculate()
+}
+
+  disconnect() {
+    document.removeEventListener("packing-item:updated", this._onItemUpdated)
+  }
 
   update() { this.recalculate() }
 
-  incrementEvening(event) {
-    const card = event.currentTarget.closest("[data-traveler-card]")
-    const countEl   = card.querySelector("[data-accessories-target='eveningCount']")
-    const rowOutfit = card.querySelector("[data-evening-item='outfit']")
-    const rowShoes  = card.querySelector("[data-evening-item='shoes']")
-    let count = parseInt(countEl.textContent) + 1
-    countEl.textContent = count
-    rowOutfit.querySelector("[data-qty]").textContent = count
-    rowShoes.querySelector("[data-qty]").textContent  = count
-    rowOutfit.style.display = "table-row"
-    rowShoes.style.display  = "table-row"
-    this.recalculate()
-  }
-
+  // ── Evening ──────────────────────────────────────────────
   incrementEvening(event) {
     const card = event.currentTarget.closest("[data-traveler-card]")
     const countEl   = card.querySelector("[data-accessories-target='eveningCount']")
@@ -42,6 +42,24 @@ export default class extends Controller {
     this.recalculate()
   }
 
+  decrementEvening(event) {
+    const card = event.currentTarget.closest("[data-traveler-card]")
+    const countEl   = card.querySelector("[data-accessories-target='eveningCount']")
+    const rowOutfit = card.querySelector("[data-evening-item='outfit']")
+    const rowShoes  = card.querySelector("[data-evening-item='shoes']")
+    let count = parseInt(countEl.textContent)
+    if (count <= 0) return
+    count -= 1
+    countEl.textContent = count
+    rowOutfit.querySelector("[data-qty]").textContent = count
+    if (count === 0) {
+      rowOutfit.style.display = "none"
+      rowShoes.style.display  = "none"
+    }
+    this.recalculate()
+  }
+
+  // ── Sport ─────────────────────────────────────────────────
   incrementSport(event) {
     const card = event.currentTarget.closest("[data-traveler-card]")
     const countEl   = card.querySelector("[data-accessories-target='sportCount']")
@@ -87,6 +105,7 @@ export default class extends Controller {
     }
   }
 
+  // ── Recalculate ───────────────────────────────────────────
   recalculate() {
     const extraAccessories = this.itemTargets
       .filter(cb => cb.checked)
@@ -103,19 +122,27 @@ export default class extends Controller {
       return sum + (hasBasket ? count * 8 : count * 8 + 12)
     }, 0)
 
-    const totalItems = this.totalValue + extraAccessories + extraEvening + extraSport
-    const cap1       = this.capacityValue
-    const over       = totalItems > cap1
+    const totalItems    = this.totalValue + extraAccessories + extraEvening + extraSport
+    const cap1          = this.capacityValue
+    const over          = totalItems > cap1
+    const selectedRadio = this.extraBagRadioTargets.find(r => r.checked)
 
-    const pct1 = Math.round(Math.min(totalItems, cap1) / cap1 * 100)
+    const pct1 = selectedRadio
+      ? Math.round(Math.min(totalItems, cap1) / cap1 * 100)
+      : Math.round(totalItems / cap1 * 100)
+
     this.pctTarget.textContent = pct1 + "%"
     this.pctTarget.className   = "ssc-capacity-pct" + (over ? " over" : "")
-    this.barTarget.style.width = pct1 + "%"
+    this.barTarget.style.width = Math.min(pct1, 100) + "%"
     this.barTarget.className   = "ssc-progress-fill" + (over ? " over" : "")
 
-    this.overAlertTarget.style.display  = over ? "flex" : "none"
-    this.fitsAlertTarget.style.display  = over ? "none" : "flex"
+    this.overAlertTarget.style.display       = over ? "flex" : "none"
+    this.fitsAlertTarget.style.display       = over ? "none" : "flex"
     this.extraBagSectionTarget.style.display = over ? "block" : "none"
+
+    if (this.hasOverPtsTarget) {
+      this.overPtsTarget.textContent = Math.max(totalItems - cap1, 0)
+    }
 
     if (!over && this.hasExtraBagRadioTarget) {
       this.extraBagRadioTargets.forEach(r => r.checked = false)
@@ -123,7 +150,6 @@ export default class extends Controller {
       return
     }
 
-    const selectedRadio = this.extraBagRadioTargets.find(r => r.checked)
     if (!selectedRadio) {
       if (this.hasExtraBagCardTarget) this.extraBagCardTarget.style.display = "none"
       return

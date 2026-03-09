@@ -153,6 +153,24 @@
   }
   .ssc-counter-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
   .ssc-counter-value { font-size: 16px; font-weight: 700; color: #F0EEE8; min-width: 20px; text-align: center; }
+  .ssc-bag-radio-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(46,51,71,0.5);
+    cursor: pointer;
+  }
+  .ssc-bag-radio-row:last-child { border-bottom: none; }
+  .ssc-bag-radio-row input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .ssc-bag-radio-label { font-size: 14px; color: #F0EEE8; }
+  .ssc-bag-radio-pts { margin-left: auto; font-size: 12px; color: var(--color-text-muted); }
 </style>
 
 <div class="ssc-page">
@@ -244,17 +262,26 @@
               <tr><th>Item</th><th>Qty</th><th>Check</th></tr>
             </thead>
             <tbody>
-              <%# Items de base — on tague les items sport pour les incrémenter via JS %>
-              <% entry[:items].each do |item| %>
-                <% sport_base = ["sport_tshirt", "jogging", "sport_socks"].include?(item[:name]) %>
-                <tr <%= sport_base ? "data-sport-base-item=\"#{item[:name]}\" data-base-qty=\"#{item[:quantity]}\"".html_safe : "" %>>
-                  <td><%= item[:name].titleize %></td>
-                  <td><span class="ssc-qty-badge"><%= item[:quantity] %></span></td>
-                  <td><input type="checkbox" style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"></td>
-                </tr>
-              <% end %>
+             <% entry[:items].each do |item| %>
+  <% sport_base = ["sport_tshirt", "jogging", "sport_socks"].include?(item.name) %>
+  <tr data-controller="packing-item"
+      data-packing-item-id-value="<%= item.id %>"
+      data-packing-item-points-value="<%= item.volume_points %>"
+      <%= sport_base ? "data-sport-base-item=\"#{item.name}\" data-base-qty=\"#{item.quantity}\"".html_safe : "" %>>
+    <td><%= item.name.titleize %></td>
+    <td>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button type="button" class="ssc-counter-btn" style="width:24px; height:24px; font-size:14px;"
+                data-action="click->packing-item#decrement">−</button>
+        <span class="ssc-qty-badge" data-packing-item-target="quantity"><%= item.quantity %></span>
+        <button type="button" class="ssc-counter-btn" style="width:24px; height:24px; font-size:14px;"
+                data-action="click->packing-item#increment">+</button>
+      </div>
+    </td>
+    <td><input type="checkbox" style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"></td>
+  </tr>
+    <% end %>
 
-              <%# Lignes evening — masquées si count = 0 %>
               <tr data-evening-item="outfit" style="display:none;">
                 <td>👗 Woman Evening Outfit</td>
                 <td><span class="ssc-qty-badge" data-qty>0</span></td>
@@ -266,7 +293,6 @@
                 <td><input type="checkbox" style="width:18px; height:18px; accent-color: var(--color-primary); cursor:pointer;"></td>
               </tr>
 
-              <%# Lignes sport supp pour voyageurs sans sport de base — masquées si count = 0 %>
               <% unless has_basket || @trip.sport %>
                 <tr data-sport-item="sport_tshirt" style="display:none;">
                   <td>🏃 Sport T-Shirt</td>
@@ -285,7 +311,6 @@
                 </tr>
               <% end %>
 
-              <%# Ligne basket pour voyageurs supp uniquement %>
               <% unless has_basket %>
                 <tr data-sport-item="basket" style="display:none;">
                   <td>👟 Basket</td>
@@ -296,7 +321,6 @@
             </tbody>
           </table>
 
-          <%# Evening section — adultes uniquement %>
           <% if entry[:traveler].role == "adult" %>
             <div class="ssc-optional-section">
               <div class="ssc-optional-label">👗 Women's Evening Outfit</div>
@@ -311,7 +335,6 @@
             </div>
           <% end %>
 
-          <%# Sport section — voyageur principal si sport coché, ou tous les voyageurs supp %>
           <% if @trip.sport || !is_main %>
             <div class="ssc-optional-section">
               <div class="ssc-optional-label">🏃 Extra Sport Set</div>
@@ -362,16 +385,16 @@
         </table>
       </div>
 
-      <!-- Luggage Capacity -->
+      <!-- Luggage 1 -->
       <div class="ssc-card">
-        <div class="ssc-card-title"><i class="bi bi-luggage-fill"></i> Luggage Capacity</div>
+        <div class="ssc-card-title"><i class="bi bi-luggage-fill"></i> <%= @trip.luggage_type.titleize %> — Luggage 1</div>
 
         <% percentage = (@result[:total_points].to_f / @result[:capacity] * 100).round %>
 
         <div class="ssc-capacity-label">
-          <span class="ssc-capacity-title">Total</span>
+          <span class="ssc-capacity-title"><%= [@result[:total_points], @result[:capacity]].min %> / <%= @result[:capacity] %> pts</span>
           <span class="ssc-capacity-pct <%= percentage > 100 ? 'over' : '' %>"
-                data-accessories-target="pct"><%= percentage %>%</span>
+            data-accessories-target="pct"><%= percentage %>%</span>
         </div>
 
         <div class="ssc-progress-track">
@@ -380,17 +403,69 @@
                style="width: <%= [percentage, 100].min %>%;"></div>
         </div>
 
-        <% if @result[:fits] %>
-          <div class="ssc-alert success">
-            <span class="ssc-alert-icon">✓</span>
-            <div><strong>Everything fits!</strong> Your <%= @trip.luggage_type %> luggage is good to go.</div>
-          </div>
-        <% else %>
-          <div class="ssc-alert danger">
-            <span class="ssc-alert-icon">⚠</span>
-            <div><strong><%= percentage - 100 %>% over capacity.</strong> Consider removing some items or switching to checked luggage.</div>
-          </div>
-        <% end %>
+        <div data-accessories-target="fitsAlert"
+             style="display: <%= percentage > 100 ? 'none' : 'flex' %>;"
+             class="ssc-alert success">
+          <span class="ssc-alert-icon">✓</span>
+          <div><strong>Everything fits!</strong> Your <%= @trip.luggage_type %> luggage is good to go.</div>
+        </div>
+
+        <div data-accessories-target="overAlert"
+          style="display: <%= percentage > 100 ? 'flex' : 'none' %>;"
+            class="ssc-alert danger">
+          <span class="ssc-alert-icon">⚠</span>
+        <div>
+        <strong><span data-accessories-target="overPts"><%= @result[:total_points] - @result[:capacity] > 0 ? @result[:total_points] - @result[:capacity] : 0 %></span> pts over capacity.</strong>
+         Add a second bag or remove items.
+        </div>
+        </div>
+
+        <div data-accessories-target="extraBagSection"
+             style="display: <%= percentage > 100 ? 'block' : 'none' %>; margin-top: 16px;">
+          <div class="ssc-optional-label" style="margin-bottom: 8px;">➕ Add a second bag</div>
+
+          <label class="ssc-bag-radio-row">
+            <input type="radio" name="extra_bag"
+                   data-accessories-target="extraBagRadio"
+                   data-capacity="100"
+                   data-label="✈️ Cabin — Luggage 2"
+                   data-action="change->accessories#recalculate">
+            <span class="ssc-bag-radio-label">✈️ Extra Cabin bag</span>
+            <span class="ssc-bag-radio-pts">100 pts</span>
+          </label>
+
+          <label class="ssc-bag-radio-row">
+            <input type="radio" name="extra_bag"
+                   data-accessories-target="extraBagRadio"
+                   data-capacity="250"
+                   data-label="🧳 Checked — Luggage 2"
+                   data-action="change->accessories#recalculate">
+            <span class="ssc-bag-radio-label">🧳 Extra Checked bag</span>
+            <span class="ssc-bag-radio-pts">250 pts</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Luggage 2 -->
+      <div class="ssc-card"
+           data-accessories-target="extraBagCard"
+           style="display: none;">
+        <div class="ssc-card-title">
+          <i class="bi bi-luggage-fill"></i>
+          <span data-accessories-target="extraBagLabel"></span>
+        </div>
+
+        <div class="ssc-capacity-label">
+          <span class="ssc-capacity-title">
+            <span data-accessories-target="extraBagUsed">0</span> /
+            <span data-accessories-target="extraBagCapacity">0</span> pts
+          </span>
+          <span class="ssc-capacity-pct" data-accessories-target="extraBagPct">0%</span>
+        </div>
+
+        <div class="ssc-progress-track">
+          <div class="ssc-progress-fill" data-accessories-target="extraBagBar" style="width: 0%;"></div>
+        </div>
       </div>
 
     </div>

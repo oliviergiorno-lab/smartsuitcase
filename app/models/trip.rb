@@ -2,7 +2,7 @@ class Trip < ApplicationRecord
   belongs_to :user, optional: true
   has_many :travelers, dependent: :destroy
   accepts_nested_attributes_for :travelers, allow_destroy: true
-  has_many :packing_list_items
+  has_many :packing_list_items, dependent: :destroy
 
   TRIP_TYPES = %w[city beach business hiking].freeze
   LUGGAGE_TYPES = %w[cabin checked].freeze

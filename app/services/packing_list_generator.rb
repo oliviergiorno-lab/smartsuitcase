@@ -48,17 +48,60 @@ class PackingListGenerator
     @trip.luggage_type == "cabin" ? 100 : 250
   end
 
+  def forecast
+    return @forecast if defined?(@forecast)
+
+    geo = HTTParty.get(
+      "https://photon.komoot.io/api/",
+      query: { q: @trip.destination, limit: 1 }
+    )
+    return @forecast = [] unless geo.success?
+
+    feature = geo.parsed_response.dig("features", 0)
+    return @forecast = [] unless feature
+
+    lon, lat = feature.dig("geometry", "coordinates")
+
+    response = HTTParty.get(
+      "https://api.open-meteo.com/v1/forecast",
+      query: {
+        latitude: lat,
+        longitude: lon,
+        daily: "temperature_2m_max,precipitation_sum,weathercode",
+        timezone: "auto",
+        forecast_days: 7
+      }
+    )
+    return @forecast = [] unless response.success?
+
+    daily = response.parsed_response["daily"]
+    dates = daily["time"]
+    temps = daily["temperature_2m_max"]
+    precip = daily["precipitation_sum"]
+    codes = daily["weathercode"]
+
+    @forecast = dates.each_with_index.map do |date, i|
+      {
+        date: Date.parse(date),
+        temp: temps[i].round,
+        rain: precip[i] > 2,
+        icon: weathercode_to_icon(codes[i])
+      }
+    end
+  rescue StandardError
+    @forecast = []
+  end
+
   private
 
- def base_items(duration, traveler)
-  extra = traveler.role == "child" ? 2 : 0
-  toiletry_points = traveler.role == "child" ? 3 : 7
-  [
-    { name: "underwear",    quantity: duration + extra, points: 1 },
-    { name: "socks",        quantity: duration,         points: 1 },
-    { name: "t_shirt",      quantity: duration + extra, points: 2 },
-  ]
- end
+  def base_items(duration, traveler)
+    extra = traveler.role == "child" ? 2 : 0
+    [
+      { name: "underwear", quantity: duration + extra, points: 1 },
+      { name: "socks",     quantity: duration,         points: 1 },
+      { name: "t_shirt",   quantity: duration + extra, points: 2 },
+    ]
+  end
 
   def weather_items(temp)
     if temp < 10
@@ -113,60 +156,13 @@ class PackingListGenerator
     { packing_per_traveler: [], total_points: 0, capacity: luggage_capacity, fits: false, error: message, forecast: [] }
   end
 
-  def forecast
-    return @forecast if defined?(@forecast)
-
-    geo = HTTParty.get(
-      "https://photon.komoot.io/api/",
-      query: { q: @trip.destination, limit: 1 }
-    )
-    return @forecast = [] unless geo.success?
-
-    feature = geo.parsed_response.dig("features", 0)
-    return @forecast = [] unless feature
-
-    lon, lat = feature.dig("geometry", "coordinates")
-
-    response = HTTParty.get(
-      "https://api.open-meteo.com/v1/forecast",
-      query: {
-        latitude: lat,
-        longitude: lon,
-        daily: "temperature_2m_max,precipitation_sum,weathercode",
-        timezone: "auto",
-        forecast_days: 7
-      }
-    )
-    return @forecast = [] unless response.success?
-
-    daily = response.parsed_response["daily"]
-    dates = daily["time"]
-    temps = daily["temperature_2m_max"]
-    precip = daily["precipitation_sum"]
-    codes = daily["weathercode"]
-
-    @forecast = dates.each_with_index.map do |date, i|
-      {
-        date: Date.parse(date),
-        temp: temps[i].round,
-        rain: precip[i] > 2,
-        icon: weathercode_to_icon(codes[i])
-      }
-    end
-  rescue StandardError
-    @forecast = []
-  end
-
   def temperature_for_rules
     return 15 if forecast.empty?
 
-    # Jours du voyage présents dans le forecast
     trip_days = forecast.select do |day|
       day[:date] >= @trip.start_date && day[:date] <= @trip.end_date
     end
 
-    # Si des jours du voyage sont dans la fenêtre → moyenne de ces jours
-    # Sinon → moyenne des 7 jours disponibles
     days_to_use = trip_days.any? ? trip_days : forecast
     temps = days_to_use.map { |d| d[:temp] }
     (temps.sum.to_f / temps.size).round
@@ -175,7 +171,6 @@ class PackingListGenerator
   def has_rain?
     return false if forecast.empty?
 
-    # Pluie sur les jours du voyage si disponibles, sinon sur les 7 jours
     trip_days = forecast.select do |day|
       day[:date] >= @trip.start_date && day[:date] <= @trip.end_date
     end

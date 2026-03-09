@@ -5,4 +5,6 @@ class Traveler < ApplicationRecord
 
   validates :name, presence: true
   validates :role, inclusion: { in: ROLES }
+
+  has_many :packing_list_items, dependent: :destroy
 end

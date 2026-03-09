@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_26_191434) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_08_011022) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -20,9 +20,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_191434) do
     t.string "name"
     t.string "priority"
     t.integer "quantity"
+    t.bigint "traveler_id"
     t.bigint "trip_id", null: false
     t.datetime "updated_at", null: false
     t.integer "volume_points"
+    t.index ["traveler_id"], name: "index_packing_list_items_on_traveler_id"
     t.index ["trip_id"], name: "index_packing_list_items_on_trip_id"
   end
 
@@ -70,6 +72,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_191434) do
     t.index ["user_id"], name: "index_wardrobe_items_on_user_id"
   end
 
+  add_foreign_key "packing_list_items", "travelers"
   add_foreign_key "packing_list_items", "trips"
   add_foreign_key "travelers", "trips"
   add_foreign_key "trips", "users"
