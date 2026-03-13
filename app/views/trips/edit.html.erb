@@ -136,9 +136,11 @@
           <span class="ssc-label"><i class="bi bi-people"></i> Voyageurs</span>
           <div id="travelers-list" data-travelers-target="list">
             <%= f.fields_for :travelers do |t| %>
-              <div class="traveler-row">
+              <div class="traveler-row" style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; margin-bottom:12px; align-items:center;">
                 <%= t.text_field :name, class: "ssc-input", placeholder: "Prénom" %>
                 <%= t.select :role, [["👤 Adulte", "adult"], ["👦 Enfant", "child"]], {}, class: "ssc-select" %>
+                <%= t.hidden_field :_destroy, class: "destroy-field" %>
+                <button type="button" onclick="this.closest('.traveler-row').style.display='none'; this.closest('.traveler-row').querySelector('.destroy-field').value='1'" style="background:none; border:none; cursor:pointer; color:#E05C5C; font-size:18px; padding:0;">✕</button>
               </div>
             <% end %>
           </div>

@@ -60,10 +60,14 @@ end
     @trip = current_user.trips.find_by(id: params[:id])
     redirect_to my_trips_path if @trip.nil?
   end
-
   def update
     @trip = current_user.trips.find_by(id: params[:id])
     if @trip.update(trip_params)
+      @trip.reload
+      if @trip.travelers.empty?
+        redirect_to edit_trip_path(@trip), alert: "Au moins un voyageur est requis."
+        return
+      end
       @trip.packing_list_items.destroy_all
       generate_and_persist_packing_list
       redirect_to trip_path(@trip), notice: "Trip updated."
