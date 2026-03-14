@@ -5,7 +5,8 @@ export default class extends Controller {
                   "extraBagRadio", "overAlert", "fitsAlert", "overPts",
                   "extraBagSection", "extraBagCard",
                   "extraBagPct", "extraBagBar", "extraBagLabel", "extraBagUsed", "extraBagCapacity",
-                  "miniBarFill", "miniBarPct"]
+                  "miniBarFill", "miniBarPct",
+                  "miniBar2", "miniBar2Fill", "miniBar2Pct", "miniBar2Label"]
   static values = { total: Number, capacity: Number }
 
   connect() {
@@ -149,6 +150,8 @@ export default class extends Controller {
     this.miniBarFillTarget.className   = "ssc-sticky-bar-fill" + (over ? " over" : "")
     this.miniBarPctTarget.textContent  = pct1 + "%"
     this.miniBarPctTarget.className    = "ssc-sticky-bar-pct" + (over ? " over" : "")
+    this.miniBar2Target.style.display  = "none"
+    this.miniBarFillTarget.closest(".ssc-sticky-bar").style.bottom = "0px"
 
     if (!over && this.hasExtraBagRadioTarget) {
       this.extraBagRadioTargets.forEach(r => r.checked = false)
@@ -175,5 +178,13 @@ export default class extends Controller {
     this.extraBagPctTarget.className        = "ssc-capacity-pct" + (over2 ? " over" : "")
     this.extraBagBarTarget.style.width      = Math.min(pct2, 100) + "%"
     this.extraBagBarTarget.className        = "ssc-progress-fill" + (over2 ? " over" : "")
+
+    this.miniBar2Target.style.display       = "block"
+    this.miniBar2LabelTarget.textContent    = "Luggage 2"
+    this.miniBar2FillTarget.style.width     = Math.min(pct2, 100) + "%"
+    this.miniBar2FillTarget.className       = "ssc-sticky-bar-fill" + (over2 ? " over" : "")
+    this.miniBar2PctTarget.textContent      = pct2 + "%"
+    this.miniBar2PctTarget.className        = "ssc-sticky-bar-pct" + (over2 ? " over" : "")
+    this.miniBarFillTarget.closest(".ssc-sticky-bar").style.bottom = "70px"
   }
 }

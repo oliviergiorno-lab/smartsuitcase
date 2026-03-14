@@ -110,7 +110,7 @@
   .ssc-alert.danger { background: rgba(224,92,92,0.1); border: 1px solid rgba(224,92,92,0.25); color: #E05C5C; }
   .ssc-alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
   .ssc-alert strong { display: block; margin-bottom: 2px; }
-  .ssc-cta { text-align: center; margin-top: 32px; }
+  .ssc-cta { text-align: center; margin-top: 32px; margin-bottom: 120px; } 
   .ssc-btn {
     display: inline-flex;
     align-items: center;
@@ -472,7 +472,7 @@
       <% bar_pct = (@result[:total_points].to_f / @result[:capacity] * 100).round %>
       <div class="ssc-sticky-bar">
         <span class="ssc-sticky-bar-icon">🧳</span>
-        <span class="ssc-sticky-bar-label"><%= @trip.luggage_type.titleize %> 1</span>
+         <span class="ssc-sticky-bar-label">Luggage 1</span>
         <div class="ssc-sticky-bar-track">
           <div class="ssc-sticky-bar-fill <%= bar_pct > 100 ? 'over' : '' %>"
                data-accessories-target="miniBarFill"
@@ -480,6 +480,21 @@
         </div>
         <span class="ssc-sticky-bar-pct <%= bar_pct > 100 ? 'over' : '' %>"
               data-accessories-target="miniBarPct"><%= bar_pct %>%</span>
+      </div>
+
+      <!-- Sticky Luggage Bar 2 -->
+      <div class="ssc-sticky-bar"
+           data-accessories-target="miniBar2"
+           style="display: none; bottom: 0;">
+        <span class="ssc-sticky-bar-icon">🧳</span>
+        <span class="ssc-sticky-bar-label" data-accessories-target="miniBar2Label"></span>
+        <div class="ssc-sticky-bar-track">
+          <div class="ssc-sticky-bar-fill"
+               data-accessories-target="miniBar2Fill"
+               style="width: 0%;"></div>
+        </div>
+        <span class="ssc-sticky-bar-pct"
+              data-accessories-target="miniBar2Pct">0%</span>
       </div>
 
     </div>
