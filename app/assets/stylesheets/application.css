@@ -28,6 +28,11 @@
 *, *::before, *::after {
   box-sizing: border-box;
 }
+
+body {
+  overflow-x: hidden;
+}
+
 /* ── Sticky Luggage Bar ──────────────────────────────────── */
 .ssc-sticky-bar {
   position: fixed;
