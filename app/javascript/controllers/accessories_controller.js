@@ -4,7 +4,8 @@ export default class extends Controller {
  static targets = ["item", "pct", "bar", "eveningCount", "sportCount",
                   "extraBagRadio", "overAlert", "fitsAlert", "overPts",
                   "extraBagSection", "extraBagCard",
-                  "extraBagPct", "extraBagBar", "extraBagLabel", "extraBagUsed", "extraBagCapacity"]
+                  "extraBagPct", "extraBagBar", "extraBagLabel", "extraBagUsed", "extraBagCapacity",
+                  "miniBarFill", "miniBarPct"]
   static values = { total: Number, capacity: Number }
 
   connect() {
@@ -143,6 +144,11 @@ export default class extends Controller {
     if (this.hasOverPtsTarget) {
       this.overPtsTarget.textContent = Math.max(totalItems - cap1, 0)
     }
+
+    this.miniBarFillTarget.style.width = Math.min(pct1, 100) + "%"
+    this.miniBarFillTarget.className   = "ssc-sticky-bar-fill" + (over ? " over" : "")
+    this.miniBarPctTarget.textContent  = pct1 + "%"
+    this.miniBarPctTarget.className    = "ssc-sticky-bar-pct" + (over ? " over" : "")
 
     if (!over && this.hasExtraBagRadioTarget) {
       this.extraBagRadioTargets.forEach(r => r.checked = false)

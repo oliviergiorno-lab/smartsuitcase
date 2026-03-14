@@ -414,10 +414,10 @@
           style="display: <%= percentage > 100 ? 'flex' : 'none' %>;"
             class="ssc-alert danger">
           <span class="ssc-alert-icon">⚠</span>
-        <div>
-        <strong><span data-accessories-target="overPts"><%= @result[:total_points] - @result[:capacity] > 0 ? @result[:total_points] - @result[:capacity] : 0 %></span> pts over capacity.</strong>
-         Add a second bag or remove items.
-        </div>
+          <div>
+            <strong><span data-accessories-target="overPts"><%= @result[:total_points] - @result[:capacity] > 0 ? @result[:total_points] - @result[:capacity] : 0 %></span> pts over capacity.</strong>
+            Add a second bag or remove items.
+          </div>
         </div>
 
         <div data-accessories-target="extraBagSection"
@@ -466,6 +466,20 @@
         <div class="ssc-progress-track">
           <div class="ssc-progress-fill" data-accessories-target="extraBagBar" style="width: 0%;"></div>
         </div>
+      </div>
+
+      <!-- Sticky Luggage Bar — DANS le scope du controller accessories -->
+      <% bar_pct = (@result[:total_points].to_f / @result[:capacity] * 100).round %>
+      <div class="ssc-sticky-bar">
+        <span class="ssc-sticky-bar-icon">🧳</span>
+        <span class="ssc-sticky-bar-label"><%= @trip.luggage_type.titleize %> 1</span>
+        <div class="ssc-sticky-bar-track">
+          <div class="ssc-sticky-bar-fill <%= bar_pct > 100 ? 'over' : '' %>"
+               data-accessories-target="miniBarFill"
+               style="width: <%= [bar_pct, 100].min %>%;"></div>
+        </div>
+        <span class="ssc-sticky-bar-pct <%= bar_pct > 100 ? 'over' : '' %>"
+              data-accessories-target="miniBarPct"><%= bar_pct %>%</span>
       </div>
 
     </div>

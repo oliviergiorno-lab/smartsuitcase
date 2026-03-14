@@ -28,3 +28,43 @@
 *, *::before, *::after {
   box-sizing: border-box;
 }
+/* ── Sticky Luggage Bar ──────────────────────────────────── */
+.ssc-sticky-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--color-card);
+  border-top: 1px solid var(--color-border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-body);
+}
+.ssc-sticky-bar-icon { font-size: 18px; flex-shrink: 0; }
+.ssc-sticky-bar-label { font-size: 13px; color: var(--color-text-muted); flex-shrink: 0; }
+.ssc-sticky-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.ssc-sticky-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+  transition: width 0.4s ease;
+}
+.ssc-sticky-bar-fill.over { background: linear-gradient(90deg, var(--color-error), #f08080); }
+.ssc-sticky-bar-pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+  flex-shrink: 0;
+  min-width: 42px;
+  text-align: right;
+}
+.ssc-sticky-bar-pct.over { color: var(--color-error); }
